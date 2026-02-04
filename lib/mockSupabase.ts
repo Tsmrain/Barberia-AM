@@ -187,7 +187,7 @@ export const supabaseApi = {
     }
   },
 
-  updateBookingDetails: async (id: string, data: { date: Date, time: string, serviceId: string, barberId: string }) => {
+  updateBookingDetails: async (id: string, data: { date: Date, time: string, serviceId: string, barberId: string, status?: BookingStatus }) => {
     await delay(500);
     const index = MOCK_BOOKINGS.findIndex(b => b.id === id);
     if (index !== -1) {
@@ -203,7 +203,8 @@ export const supabaseApi = {
         ...booking,
         fecha_hora: newDate,
         servicio: newService,
-        barbero: newBarber
+        barbero: newBarber,
+        estado: data.status || booking.estado
       };
     }
   },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Calendar, Clock, Scissors, User, Save, Loader2, Trash2, CheckCircle2, Ban } from 'lucide-react';
+import { X, Calendar, Clock, Scissors, User, Save, Loader2, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabaseApi } from '../../lib/mockSupabase';
 import { Booking, Barber, Service, BookingStatus } from '../../types';
@@ -29,6 +29,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
   const [selectedTime, setSelectedTime] = useState('');
   const [serviceId, setServiceId] = useState('');
   const [barberId, setBarberId] = useState('');
+  const [status, setStatus] = useState<BookingStatus>(BookingStatus.PENDIENTE);
 
   useEffect(() => {
     if (booking && isOpen) {
@@ -39,6 +40,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
       setSelectedTime(hour);
       setServiceId(booking.servicio.id);
       setBarberId(booking.barbero.id);
+      setStatus(booking.estado);
     }
   }, [booking, isOpen]);
 
@@ -60,7 +62,8 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
             date: fullDate,
             time: selectedTime,
             serviceId,
-            barberId
+            barberId,
+            status: status
         });
 
         toast.success("Reserva actualizada correctamente");
@@ -73,57 +76,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
     }
   };
 
-  const handleStatusChange = async (e: React.MouseEvent, status: BookingStatus) => {
-    // PREVENIR CUALQUIER INTENTO DE SUBMIT DEL FORMULARIO
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if(!booking) return;
-    if(!confirm(`¿Confirmar cambio a estado: ${status.toUpperCase().replace('_', ' ')}?`)) return;
-
-    setLoading(true);
-    try {
-        await supabaseApi.updateBookingStatus(booking.id, status);
-        toast.success(`Estado actualizado a ${status.replace('_', ' ')}`);
-        
-        // Esperar un micro-tick para asegurar que la UI responda
-        setTimeout(() => {
-            onSuccess();
-            onClose();
-        }, 100);
-    } catch (error) {
-        console.error(error);
-        toast.error("Error al actualizar estado");
-    } finally {
-        setLoading(false);
-    }
-  };
-
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if(!booking) return;
-    if(!confirm('¿Estás seguro de ELIMINAR esta cita? Esta acción no se puede deshacer.')) return;
-    
-    setLoading(true);
-    try {
-        await supabaseApi.deleteBooking(booking.id);
-        toast.success("Reserva eliminada permanentemente");
-        setTimeout(() => {
-            onSuccess();
-            onClose();
-        }, 100);
-    } catch(err) {
-        toast.error("Error al eliminar reserva");
-    } finally {
-        setLoading(false);
-    }
-  };
-
   if (!isOpen || !booking) return null;
-
-  const isTerminated = booking.estado === BookingStatus.COMPLETADO || booking.estado === BookingStatus.NO_SHOW || booking.estado === BookingStatus.CANCELADO;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -166,7 +119,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                     </div>
                 </div>
 
-                <div className={`space-y-6 transition-opacity ${isTerminated ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         {/* Service */}
                         <div className="space-y-2">
@@ -199,17 +152,36 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Date */}
-                    <div className="space-y-2">
-                        <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Fecha</label>
-                        <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                            <input 
-                                type="date"
-                                value={date}
-                                onChange={e => setDate(e.target.value)}
-                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-amber-500 focus:outline-none [color-scheme:dark]"
-                            />
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Date */}
+                        <div className="space-y-2">
+                            <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Fecha</label>
+                            <div className="relative">
+                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                                <input 
+                                    type="date"
+                                    value={date}
+                                    onChange={e => setDate(e.target.value)}
+                                    className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-amber-500 focus:outline-none [color-scheme:dark]"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Status */}
+                         <div className="space-y-2">
+                            <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Estado</label>
+                            <div className="relative">
+                                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                                <select 
+                                    value={status}
+                                    onChange={e => setStatus(e.target.value as BookingStatus)}
+                                    className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-amber-500 focus:outline-none appearance-none text-sm capitalize"
+                                >
+                                    {Object.values(BookingStatus).map((s) => (
+                                        <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -242,54 +214,14 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
                 <div className="pt-4 flex flex-col gap-3">
                     {/* Primary Update Action (Save Changes) */}
-                    {!isTerminated && (
-                        <button 
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 shadow-lg shadow-white/10"
-                        >
-                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                            <span>Guardar Cambios</span>
-                        </button>
-                    )}
-
-                    {/* Lifecycle Actions */}
-                    <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4 mt-2">
-                        {!isTerminated ? (
-                            <>
-                                <button 
-                                    type="button"
-                                    onClick={(e) => handleStatusChange(e, BookingStatus.COMPLETADO)}
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors border border-transparent hover:border-blue-500/30"
-                                >
-                                    <CheckCircle2 className="w-5 h-5 mb-1" />
-                                    <span className="text-[10px] font-bold uppercase">Completado</span>
-                                </button>
-
-                                <button 
-                                    type="button"
-                                    onClick={(e) => handleStatusChange(e, BookingStatus.NO_SHOW)}
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors border border-transparent hover:border-red-500/30"
-                                >
-                                    <Ban className="w-5 h-5 mb-1" />
-                                    <span className="text-[10px] font-bold uppercase">No Show</span>
-                                </button>
-                                
-                                <button 
-                                    type="button"
-                                    onClick={handleDelete}
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-white/5 hover:bg-red-900/20 text-white/40 hover:text-red-400 transition-colors border border-transparent hover:border-red-500/30"
-                                >
-                                    <Trash2 className="w-5 h-5 mb-1" />
-                                    <span className="text-[10px] font-bold uppercase">Eliminar</span>
-                                </button>
-                            </>
-                        ) : (
-                            <div className="col-span-3 text-center text-white/30 text-xs italic">
-                                Esta cita ha finalizado.
-                            </div>
-                        )}
-                    </div>
+                    <button 
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 shadow-lg shadow-white/10"
+                    >
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                        <span>Guardar Cambios</span>
+                    </button>
                 </div>
 
             </form>
