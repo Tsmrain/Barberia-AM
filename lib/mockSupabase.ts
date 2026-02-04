@@ -51,7 +51,7 @@ let MOCK_BOOKINGS: Booking[] = [
   {
     id: 'bk_1',
     fecha_hora: YESTERDAY,
-    estado: BookingStatus.CONFIRMADO,
+    estado: BookingStatus.COMPLETADO,
     cliente: { celular: '70012345', nombre_completo: 'Carlos Mesa', ranking: ClientRanking.VIP },
     barbero: MOCK_BARBERS[0], // Andy
     servicio: MOCK_SERVICES[8], // VIP (130bs)
@@ -61,7 +61,7 @@ let MOCK_BOOKINGS: Booking[] = [
   {
     id: 'bk_2',
     fecha_hora: YESTERDAY,
-    estado: BookingStatus.CONFIRMADO,
+    estado: BookingStatus.COMPLETADO,
     cliente: { celular: '70099887', nombre_completo: 'Luis Arce', ranking: ClientRanking.NUEVO },
     barbero: MOCK_BARBERS[1], // Mateo
     servicio: MOCK_SERVICES[0], // Corte (60bs)
@@ -126,15 +126,23 @@ export const supabaseApi = {
 
   createBooking: async (bookingData: any) => {
     await delay(1000);
+    
+    // Support for flexible params (admin/walkin) or flow params
+    const date = bookingData.date instanceof Date ? bookingData.date : new Date(bookingData.date);
+    if (bookingData.time) {
+        const [hours, minutes] = bookingData.time.split(':').map(Number);
+        date.setHours(hours, minutes, 0, 0);
+    }
+
     const newBooking: Booking = {
         id: Math.random().toString(36).substr(2, 9),
-        fecha_hora: bookingData.date, // Simplificación: usamos date como fecha_hora
-        estado: BookingStatus.PENDIENTE,
+        fecha_hora: date,
+        estado: bookingData.status || BookingStatus.PENDIENTE,
         cliente: MOCK_CLIENTS[bookingData.clientPhone],
-        barbero: MOCK_BARBERS.find(b => b.id === bookingData.barberId)!,
-        servicio: MOCK_SERVICES.find(s => s.id === bookingData.serviceId)!,
-        sucursal: MOCK_BRANCHES.find(b => b.id === bookingData.branchId)!,
-        origen: 'guest'
+        barbero: MOCK_BARBERS.find(b => b.id === bookingData.barberId) || MOCK_BARBERS[0],
+        servicio: MOCK_SERVICES.find(s => s.id === bookingData.serviceId) || MOCK_SERVICES[0],
+        sucursal: MOCK_BRANCHES.find(b => b.id === bookingData.branchId) || MOCK_BRANCHES[0],
+        origen: bookingData.origin || 'guest'
     };
     MOCK_BOOKINGS.push(newBooking);
     return { success: true, id: newBooking.id };

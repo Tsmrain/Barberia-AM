@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Calendar, Clock, Scissors, User, Save, Loader2, Trash2 } from 'lucide-react';
+import { X, Calendar, Clock, Scissors, User, Save, Loader2, Trash2, CheckCircle2, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabaseApi } from '../../lib/mockSupabase';
-import { Booking, Barber, Service } from '../../types';
+import { Booking, Barber, Service, BookingStatus } from '../../types';
 import { format } from 'date-fns';
 
 interface EditBookingModalProps {
@@ -73,7 +73,40 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
     }
   };
 
+  const handleStatusChange = async (status: BookingStatus) => {
+    if(!booking) return;
+    if(!confirm(`¿Marcar cita como ${status.toUpperCase()}?`)) return;
+
+    setLoading(true);
+    try {
+        await supabaseApi.updateBookingStatus(booking.id, status);
+        toast.success(`Cita marcada como ${status}`);
+        onSuccess();
+        onClose();
+    } catch (error) {
+        toast.error("Error al actualizar estado");
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if(!booking) return;
+    if(!confirm('¿Eliminar definitivamente esta reserva?')) return;
+    setLoading(true);
+    try {
+        await supabaseApi.deleteBooking(booking.id);
+        toast.success("Reserva eliminada");
+        onSuccess();
+        onClose();
+    } finally {
+        setLoading(false);
+    }
+  };
+
   if (!isOpen || !booking) return null;
+
+  const isTerminated = booking.estado === BookingStatus.COMPLETADO || booking.estado === BookingStatus.NO_SHOW || booking.estado === BookingStatus.CANCELADO;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -86,8 +119,17 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
         >
             <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#0a0a0a] shrink-0">
                 <div>
-                    <h2 className="text-xl font-bold text-white">Reprogramar Cita</h2>
-                    <p className="text-xs text-white/50">Ticket: {booking.id.toUpperCase().slice(0,6)}</p>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-white">Gestionar Cita</h2>
+                        <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold
+                            ${booking.estado === BookingStatus.CONFIRMADO ? 'bg-green-500/20 text-green-500' : 
+                              booking.estado === BookingStatus.COMPLETADO ? 'bg-blue-500/20 text-blue-500' :
+                              booking.estado === BookingStatus.NO_SHOW ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-500'}
+                        `}>
+                            {booking.estado.replace('_', ' ')}
+                        </span>
+                    </div>
+                    <p className="text-xs text-white/50">Ticket: {booking.id.toUpperCase().slice(0,6)} • {booking.origen}</p>
                 </div>
                 <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-white/50 hover:text-white">
                     <X className="w-5 h-5" />
@@ -107,87 +149,130 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                     {/* Service */}
-                    <div className="space-y-2">
-                        <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Servicio</label>
-                        <div className="relative">
-                            <Scissors className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                            <select 
-                                value={serviceId}
-                                onChange={e => setServiceId(e.target.value)}
-                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-amber-500 focus:outline-none appearance-none text-sm"
-                            >
-                                {services.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                            </select>
+                <div className={`space-y-6 transition-opacity ${isTerminated ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Service */}
+                        <div className="space-y-2">
+                            <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Servicio</label>
+                            <div className="relative">
+                                <Scissors className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                                <select 
+                                    value={serviceId}
+                                    onChange={e => setServiceId(e.target.value)}
+                                    className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-amber-500 focus:outline-none appearance-none text-sm"
+                                >
+                                    {services.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Barber */}
+                        <div className="space-y-2">
+                            <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Barbero</label>
+                            <div className="relative">
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                                <select 
+                                    value={barberId}
+                                    onChange={e => setBarberId(e.target.value)}
+                                    className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-amber-500 focus:outline-none appearance-none text-sm"
+                                >
+                                    {barbers.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
+                                </select>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Barber */}
+                    {/* Date */}
                     <div className="space-y-2">
-                        <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Barbero</label>
+                        <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Fecha</label>
                         <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                            <select 
-                                value={barberId}
-                                onChange={e => setBarberId(e.target.value)}
-                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-amber-500 focus:outline-none appearance-none text-sm"
-                            >
-                                {barbers.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
-                            </select>
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                            <input 
+                                type="date"
+                                value={date}
+                                onChange={e => setDate(e.target.value)}
+                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-amber-500 focus:outline-none [color-scheme:dark]"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Time Grid Selection */}
+                    <div className="space-y-3">
+                        <label className="text-xs text-white/40 uppercase tracking-wider font-bold flex items-center justify-between">
+                            <span>Horario (1 Hora)</span>
+                            {selectedTime && <span className="text-amber-500">{selectedTime}</span>}
+                        </label>
+                        <div className="grid grid-cols-4 gap-2">
+                            {TIME_SLOTS.map(time => (
+                                <button
+                                    key={time}
+                                    type="button"
+                                    onClick={() => setSelectedTime(time)}
+                                    className={`
+                                        py-2 px-1 rounded-lg text-xs font-bold border transition-all duration-200
+                                        ${selectedTime === time 
+                                            ? 'bg-amber-500 text-black border-amber-500 shadow-lg shadow-amber-500/20' 
+                                            : 'bg-[#0a0a0a] text-white/60 border-white/10 hover:border-white/30 hover:text-white'
+                                        }
+                                    `}
+                                >
+                                    {time}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
 
-                {/* Date */}
-                <div className="space-y-2">
-                    <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Fecha</label>
-                    <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                        <input 
-                            type="date"
-                            value={date}
-                            onChange={e => setDate(e.target.value)}
-                            className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-amber-500 focus:outline-none [color-scheme:dark]"
-                        />
+                <div className="pt-4 flex flex-col gap-3">
+                    {/* Primary Update Action */}
+                    {!isTerminated && (
+                        <button 
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 shadow-lg shadow-white/10"
+                        >
+                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                            <span>Guardar Cambios</span>
+                        </button>
+                    )}
+
+                    {/* Lifecycle Actions */}
+                    <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4 mt-2">
+                        {!isTerminated ? (
+                            <>
+                                <button 
+                                    type="button"
+                                    onClick={() => handleStatusChange(BookingStatus.COMPLETADO)}
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                    <CheckCircle2 className="w-5 h-5 mb-1" />
+                                    <span className="text-[10px] font-bold uppercase">Completado</span>
+                                </button>
+
+                                <button 
+                                    type="button"
+                                    onClick={() => handleStatusChange(BookingStatus.NO_SHOW)}
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+                                >
+                                    <Ban className="w-5 h-5 mb-1" />
+                                    <span className="text-[10px] font-bold uppercase">No Show</span>
+                                </button>
+                                
+                                <button 
+                                    type="button"
+                                    onClick={handleDelete}
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-white/5 hover:bg-red-900/20 text-white/40 hover:text-red-400 transition-colors"
+                                >
+                                    <Trash2 className="w-5 h-5 mb-1" />
+                                    <span className="text-[10px] font-bold uppercase">Eliminar</span>
+                                </button>
+                            </>
+                        ) : (
+                            <div className="col-span-3 text-center text-white/30 text-xs italic">
+                                Esta cita ha finalizado. No se pueden realizar más cambios.
+                            </div>
+                        )}
                     </div>
-                </div>
-
-                {/* Time Grid Selection */}
-                <div className="space-y-3">
-                     <label className="text-xs text-white/40 uppercase tracking-wider font-bold flex items-center justify-between">
-                        <span>Horario (1 Hora)</span>
-                        {selectedTime && <span className="text-amber-500">{selectedTime}</span>}
-                     </label>
-                     <div className="grid grid-cols-4 gap-2">
-                        {TIME_SLOTS.map(time => (
-                            <button
-                                key={time}
-                                type="button"
-                                onClick={() => setSelectedTime(time)}
-                                className={`
-                                    py-2 px-1 rounded-lg text-xs font-bold border transition-all duration-200
-                                    ${selectedTime === time 
-                                        ? 'bg-amber-500 text-black border-amber-500 shadow-lg shadow-amber-500/20' 
-                                        : 'bg-[#0a0a0a] text-white/60 border-white/10 hover:border-white/30 hover:text-white'
-                                    }
-                                `}
-                            >
-                                {time}
-                            </button>
-                        ))}
-                     </div>
-                </div>
-
-                <div className="pt-4 flex gap-3">
-                    <button 
-                        type="submit"
-                        disabled={loading}
-                        className="flex-1 bg-white text-black font-bold py-4 rounded-xl hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 shadow-lg shadow-white/10"
-                    >
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                        <span>Confirmar Cambios</span>
-                    </button>
                 </div>
 
             </form>

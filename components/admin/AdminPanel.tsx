@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, CalendarDays, LogOut, Scissors } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, LogOut, Scissors, UserPlus } from 'lucide-react';
 import { DashboardView } from './DashboardView';
 import { BookingsManager } from './BookingsManager';
+import { QuickBookingModal } from './QuickBookingModal'; // Import
 import { Booking } from '../../types';
 import { supabaseApi } from '../../lib/mockSupabase';
 
@@ -14,6 +15,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings'>('dashboard');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isQuickModalOpen, setIsQuickModalOpen] = useState(false); // State for modal
 
   // Cargar datos globales para el admin
   const refreshData = async () => {
@@ -88,10 +90,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                     </h1>
                     <p className="text-white/40 text-sm">Bienvenido de nuevo, Andy.</p>
                 </div>
-                {/* Mobile Logout */}
-                <button onClick={onLogout} className="md:hidden p-2 bg-white/5 rounded-full text-white/60">
-                    <LogOut className="w-5 h-5" />
-                </button>
+                
+                <div className="flex items-center gap-3">
+                     {/* Walk-in Button */}
+                    <button 
+                        onClick={() => setIsQuickModalOpen(true)}
+                        className="bg-white text-black hover:bg-gray-200 font-bold py-2 px-4 rounded-full flex items-center gap-2 text-sm shadow-lg shadow-white/10 transition-all"
+                    >
+                        <UserPlus className="w-4 h-4" />
+                        <span className="hidden sm:block">Cliente en Puerta</span>
+                    </button>
+
+                    {/* Mobile Logout */}
+                    <button onClick={onLogout} className="md:hidden p-2 bg-white/5 rounded-full text-white/60">
+                        <LogOut className="w-5 h-5" />
+                    </button>
+                </div>
             </header>
 
             <motion.div
@@ -105,6 +119,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
             </motion.div>
          </div>
       </main>
+
+      {/* Quick Booking Modal */}
+      <QuickBookingModal 
+        isOpen={isQuickModalOpen}
+        onClose={() => setIsQuickModalOpen(false)}
+        onSuccess={refreshData}
+      />
     </div>
   );
 };

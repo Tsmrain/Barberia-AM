@@ -51,7 +51,8 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
     setIsEditModalOpen(true);
   };
 
-  // Filtrar reservas del día seleccionado
+  // Filtrar reservas del día seleccionado (Mostramos todas menos CANCELADO para mantener historial visual, o mostramos todo con estilo distinto)
+  // Decisión: Mostrar TODO lo que ocupe espacio o haya ocurrido
   const dayBookings = useMemo(() => {
     return bookings.filter(b => isSameDay(b.fecha_hora, selectedDate) && b.estado !== BookingStatus.CANCELADO);
   }, [bookings, selectedDate]);
@@ -92,12 +93,16 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
             {/* Legend */}
             <div className="flex items-center space-x-4 text-xs font-medium text-white/40">
                 <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500/20 border border-amber-500/50" />
+                    <div className="w-2 h-2 rounded-full bg-amber-500" />
                     <span>Pendiente</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
                     <span>Confirmado</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <span>Finalizado</span>
                 </div>
             </div>
         </div>
@@ -163,8 +168,40 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
 // --- SUB COMPONENTS ---
 
 const CalendarCard = ({ booking, onClick }: { booking: Booking; onClick: () => void }) => {
-    const isConfirmed = booking.estado === BookingStatus.CONFIRMADO;
+    const status = booking.estado;
     
+    // Style Mapping
+    let baseStyles = '';
+    let stripeColor = '';
+    let textStatus = '';
+    let textStatusColor = '';
+
+    switch(status) {
+        case BookingStatus.CONFIRMADO:
+            baseStyles = 'bg-green-500/10 border-green-500/20 hover:border-green-500/40';
+            stripeColor = 'bg-green-500';
+            textStatus = 'Confirmado';
+            textStatusColor = 'text-green-400';
+            break;
+        case BookingStatus.COMPLETADO:
+            baseStyles = 'bg-blue-900/10 border-blue-500/10 hover:border-blue-500/30 opacity-70 grayscale-[0.3]';
+            stripeColor = 'bg-blue-500';
+            textStatus = 'Finalizado';
+            textStatusColor = 'text-blue-400';
+            break;
+        case BookingStatus.NO_SHOW:
+            baseStyles = 'bg-red-900/10 border-red-500/20 opacity-60';
+            stripeColor = 'bg-red-500';
+            textStatus = 'No Show';
+            textStatusColor = 'text-red-400 decoration-line-through';
+            break;
+        default: // PENDIENTE
+            baseStyles = 'bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40';
+            stripeColor = 'bg-amber-500';
+            textStatus = 'Pendiente';
+            textStatusColor = 'text-amber-400';
+    }
+
     return (
         <motion.button
             layoutId={booking.id}
@@ -173,23 +210,23 @@ const CalendarCard = ({ booking, onClick }: { booking: Booking; onClick: () => v
             whileTap={{ scale: 0.98 }}
             className={`
                 w-full h-full text-left p-3 rounded-xl border flex flex-col justify-between shadow-lg relative overflow-hidden group
-                ${isConfirmed 
-                    ? 'bg-green-500/10 border-green-500/20 hover:border-green-500/40' 
-                    : 'bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40'
-                }
+                ${baseStyles}
             `}
         >   
             {/* Status Indicator Stripe */}
-            <div className={`absolute left-0 top-0 bottom-0 w-1 ${isConfirmed ? 'bg-green-500' : 'bg-amber-500'}`} />
+            <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripeColor}`} />
 
             <div className="pl-2">
                 <div className="flex justify-between items-start">
-                    <span className={`text-xs font-bold uppercase tracking-wider mb-1 ${isConfirmed ? 'text-green-400' : 'text-amber-400'}`}>
-                        {isConfirmed ? 'Confirmado' : 'Pendiente'}
+                    <span className={`text-xs font-bold uppercase tracking-wider mb-1 ${textStatusColor}`}>
+                        {textStatus}
                     </span>
+                    {booking.origen === 'walkin' && (
+                        <span className="text-[9px] bg-white/10 text-white/60 px-1 rounded uppercase">Walk-in</span>
+                    )}
                 </div>
                 
-                <h4 className="text-sm font-bold text-white leading-tight mb-1 line-clamp-2">
+                <h4 className={`text-sm font-bold text-white leading-tight mb-1 line-clamp-2 ${status === BookingStatus.NO_SHOW ? 'line-through text-white/40' : ''}`}>
                     {booking.cliente.nombre_completo}
                 </h4>
                 

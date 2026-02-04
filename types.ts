@@ -7,7 +7,9 @@ export enum ClientRanking {
 export enum BookingStatus {
   PENDIENTE = 'pendiente',
   CONFIRMADO = 'confirmado',
-  CANCELADO = 'cancelado'
+  CANCELADO = 'cancelado',
+  COMPLETADO = 'completado',
+  NO_SHOW = 'no_show'
 }
 
 export interface Branch {
@@ -47,5 +49,5 @@ export interface Booking {
   barbero: Barber;
   servicio: Service;
   sucursal: Branch;
-  origen: 'guest' | 'google';
+  origen: 'guest' | 'google' | 'walkin' | 'admin';
 }

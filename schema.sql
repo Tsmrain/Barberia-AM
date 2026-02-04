@@ -4,13 +4,14 @@ DROP TABLE IF EXISTS reservas;
 DROP TABLE IF EXISTS clientes;
 DROP TABLE IF EXISTS servicios;
 DROP TABLE IF EXISTS barberos;
-DROP TABLE IF EXISTS sucursales; -- Nueva tabla
+DROP TABLE IF EXISTS sucursales;
 DROP TYPE IF EXISTS ranking_cliente;
 DROP TYPE IF EXISTS estado_reserva;
 
 -- Enums para consistencia
 CREATE TYPE ranking_cliente AS ENUM ('nuevo', 'frecuente', 'vip');
-CREATE TYPE estado_reserva AS ENUM ('pendiente', 'confirmado', 'cancelado');
+-- Estados actualizados para ciclo de vida completo
+CREATE TYPE estado_reserva AS ENUM ('pendiente', 'confirmado', 'cancelado', 'completado', 'no_show');
 
 -- Tabla: Sucursales
 CREATE TABLE sucursales (
@@ -59,7 +60,7 @@ CREATE TABLE reservas (
     barbero_id UUID REFERENCES barberos(id),
     servicio_id UUID REFERENCES servicios(id),
     sucursal_id UUID REFERENCES sucursales(id),
-    origen TEXT DEFAULT 'guest', -- 'google', 'guest', etc.
+    origen TEXT DEFAULT 'guest', -- 'google', 'guest', 'walkin', 'admin'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
@@ -78,7 +79,7 @@ INSERT INTO barberos (nombre, bio_corta, activo) VALUES
 ('Mateo', 'Experto en Fade y diseños modernos.', TRUE),
 ('Leo', 'Especialista en barbas y rituales de toalla caliente.', TRUE);
 
--- Seed Data (Servicios) - Actualizados según nuevos requerimientos
+-- Seed Data (Servicios)
 INSERT INTO servicios (nombre, precio, duracion_min, descripcion) VALUES
 ('Corte Clásico', 60.00, 60, 'Corte tradicional con técnica de tijera y acabado pulido.'),
 ('Corte + Lavado', 80.00, 60, 'Corte de cabello con lavado refrescante incluido.'),
