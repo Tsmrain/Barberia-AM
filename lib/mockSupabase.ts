@@ -39,20 +39,24 @@ const MOCK_SERVICES: Service[] = [
 
 // Simula la tabla de clientes en memoria
 let MOCK_CLIENTS: Record<string, Client> = {
-  '5512345678': { celular: '5512345678', nombre_completo: 'Juan Pérez', ranking: ClientRanking.FRECUENTE }
+  '5512345678': { celular: '5512345678', nombre_completo: 'Juan Pérez', ranking: ClientRanking.FRECUENTE },
+  '70012345': { celular: '70012345', nombre_completo: 'Carlos Mesa', ranking: ClientRanking.VIP },
+  '70099887': { celular: '70099887', nombre_completo: 'Luis Arce', ranking: ClientRanking.NUEVO },
+  '70055555': { celular: '70055555', nombre_completo: 'Evo M.', ranking: ClientRanking.FRECUENTE },
+  '70011122': { celular: '70011122', nombre_completo: 'Tuto Q.', ranking: ClientRanking.NUEVO }
 };
 
 // SEED DATA: Reservas iniciales para el Admin Panel
 const TODAY = new Date();
 const YESTERDAY = new Date(TODAY); YESTERDAY.setDate(YESTERDAY.getDate() - 1);
-const TOMORROW = new Date(TODAY); TOMORROW.setDate(TOMORROW.getDate() + 1);
 
-let MOCK_BOOKINGS: Booking[] = [
+// Importante: Usamos una constante mutable (array) pero no reasignamos la variable para mantener la referencia.
+const MOCK_BOOKINGS: Booking[] = [
   {
     id: 'bk_1',
     fecha_hora: YESTERDAY,
     estado: BookingStatus.COMPLETADO,
-    cliente: { celular: '70012345', nombre_completo: 'Carlos Mesa', ranking: ClientRanking.VIP },
+    cliente: MOCK_CLIENTS['70012345'],
     barbero: MOCK_BARBERS[0], // Andy
     servicio: MOCK_SERVICES[8], // VIP (130bs)
     sucursal: MOCK_BRANCHES[0],
@@ -62,7 +66,7 @@ let MOCK_BOOKINGS: Booking[] = [
     id: 'bk_2',
     fecha_hora: YESTERDAY,
     estado: BookingStatus.COMPLETADO,
-    cliente: { celular: '70099887', nombre_completo: 'Luis Arce', ranking: ClientRanking.NUEVO },
+    cliente: MOCK_CLIENTS['70099887'],
     barbero: MOCK_BARBERS[1], // Mateo
     servicio: MOCK_SERVICES[0], // Corte (60bs)
     sucursal: MOCK_BRANCHES[0],
@@ -72,7 +76,7 @@ let MOCK_BOOKINGS: Booking[] = [
     id: 'bk_3',
     fecha_hora: TODAY,
     estado: BookingStatus.PENDIENTE,
-    cliente: { celular: '70055555', nombre_completo: 'Evo M.', ranking: ClientRanking.FRECUENTE },
+    cliente: MOCK_CLIENTS['70055555'],
     barbero: MOCK_BARBERS[2], // Leo
     servicio: MOCK_SERVICES[2], // Barba (35bs)
     sucursal: MOCK_BRANCHES[1],
@@ -82,7 +86,7 @@ let MOCK_BOOKINGS: Booking[] = [
     id: 'bk_4',
     fecha_hora: TODAY,
     estado: BookingStatus.CONFIRMADO,
-    cliente: { celular: '70011122', nombre_completo: 'Tuto Q.', ranking: ClientRanking.NUEVO },
+    cliente: MOCK_CLIENTS['70011122'],
     barbero: MOCK_BARBERS[0], // Andy
     servicio: MOCK_SERVICES[7], // Premium (110bs)
     sucursal: MOCK_BRANCHES[1],
@@ -109,7 +113,7 @@ export const supabaseApi = {
   },
 
   checkClientByPhone: async (phone: string): Promise<Client | null> => {
-    await delay(500);
+    await delay(300); // Rápido para simular app real
     return MOCK_CLIENTS[phone] || null;
   },
 
@@ -125,18 +129,25 @@ export const supabaseApi = {
   },
 
   createBooking: async (bookingData: any) => {
-    await delay(1000);
+    await delay(800);
     
-    // Support for flexible params (admin/walkin) or flow params
-    const date = bookingData.date instanceof Date ? bookingData.date : new Date(bookingData.date);
+    // Logica robusta para fecha
+    // Si viene del Admin (QuickBooking), 'date' ya es un objeto Date con la hora actual.
+    // Si viene del Cliente, 'date' es un objeto Date (solo dia) + 'time' string.
+    let finalDate: Date;
+    
     if (bookingData.time) {
         const [hours, minutes] = bookingData.time.split(':').map(Number);
-        date.setHours(hours, minutes, 0, 0);
+        finalDate = new Date(bookingData.date);
+        finalDate.setHours(hours, minutes, 0, 0);
+    } else {
+        // Asumimos que bookingData.date ya tiene la hora correcta (Walk-in)
+        finalDate = new Date(bookingData.date);
     }
 
     const newBooking: Booking = {
         id: Math.random().toString(36).substr(2, 9),
-        fecha_hora: date,
+        fecha_hora: finalDate,
         estado: bookingData.status || BookingStatus.PENDIENTE,
         cliente: MOCK_CLIENTS[bookingData.clientPhone],
         barbero: MOCK_BARBERS.find(b => b.id === bookingData.barberId) || MOCK_BARBERS[0],
@@ -144,11 +155,11 @@ export const supabaseApi = {
         sucursal: MOCK_BRANCHES.find(b => b.id === bookingData.branchId) || MOCK_BRANCHES[0],
         origen: bookingData.origin || 'guest'
     };
+    
     MOCK_BOOKINGS.push(newBooking);
     return { success: true, id: newBooking.id };
   },
 
-  // Simula obtener horarios ocupados para un barbero en una fecha específica
   getTakenSlots: async (date: Date, barberId: string): Promise<string[]> => {
     await delay(400); 
     const day = date.getDate();
@@ -162,28 +173,28 @@ export const supabaseApi = {
   // --- ADMIN FUNCTIONS ---
 
   getAllBookings: async (): Promise<Booking[]> => {
-    await delay(500);
-    // Ordenar por fecha descendente
+    await delay(300);
+    // Devolvemos una copia nueva del array para reactividad, pero el source of truth es MOCK_BOOKINGS
     return [...MOCK_BOOKINGS].sort((a, b) => b.fecha_hora.getTime() - a.fecha_hora.getTime());
   },
 
   updateBookingStatus: async (id: string, status: BookingStatus): Promise<void> => {
-    await delay(300);
+    await delay(200);
     const index = MOCK_BOOKINGS.findIndex(b => b.id === id);
     if (index !== -1) {
+        // Mutación directa
         MOCK_BOOKINGS[index].estado = status;
     }
   },
 
   updateBookingDetails: async (id: string, data: { date: Date, time: string, serviceId: string, barberId: string }) => {
-    await delay(800);
+    await delay(500);
     const index = MOCK_BOOKINGS.findIndex(b => b.id === id);
     if (index !== -1) {
       const booking = MOCK_BOOKINGS[index];
       const newService = MOCK_SERVICES.find(s => s.id === data.serviceId) || booking.servicio;
       const newBarber = MOCK_BARBERS.find(b => b.id === data.barberId) || booking.barbero;
       
-      // Update date object with new time
       const [hours, minutes] = data.time.split(':').map(Number);
       const newDate = new Date(data.date);
       newDate.setHours(hours, minutes);
@@ -198,7 +209,11 @@ export const supabaseApi = {
   },
 
   deleteBooking: async (id: string): Promise<void> => {
-    await delay(300);
-    MOCK_BOOKINGS = MOCK_BOOKINGS.filter(b => b.id !== id);
+    await delay(200);
+    const index = MOCK_BOOKINGS.findIndex(b => b.id === id);
+    if (index !== -1) {
+        // Usamos splice para borrar físicamente el elemento del array
+        MOCK_BOOKINGS.splice(index, 1);
+    }
   }
 };

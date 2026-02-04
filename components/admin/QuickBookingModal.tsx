@@ -12,7 +12,6 @@ interface QuickBookingModalProps {
 }
 
 export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [step, setStep] = useState<'phone' | 'details'>('phone');
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,10 +24,9 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
   const [selectedBarberId, setSelectedBarberId] = useState('');
   const [selectedServiceId, setSelectedServiceId] = useState('');
 
-  // Pre-load data
+  // Pre-load data when modal opens
   useEffect(() => {
     if (isOpen) {
-        setStep('phone');
         setPhone('');
         setName('');
         setClient(null);
@@ -36,19 +34,23 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
             .then(([b, s]) => {
                 setBarbers(b);
                 setServices(s);
-                // Default selections
+                // Default selections to avoid empty states
                 if(b.length > 0) setSelectedBarberId(b[0].id);
                 if(s.length > 0) setSelectedServiceId(s[0].id);
             });
     }
   }, [isOpen]);
 
-  // Debounce check phone
+  // Real-time Phone Check (Mirroring Client Logic)
   useEffect(() => {
+    // Validamos longitud similar al cliente (8-12 dígitos)
+    const isValidLength = phone.length >= 8 && phone.length <= 12;
+
     const checkPhone = async () => {
-        if(phone.length >= 8) {
+        if(isValidLength) {
             setIsChecking(true);
             try {
+                // Simulamos la misma llamada a API que hace el frontend del cliente
                 const found = await supabaseApi.checkClientByPhone(phone);
                 setClient(found);
             } finally {
@@ -67,40 +69,53 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
     setLoading(true);
 
     try {
-        // 1. Ensure client exists
+        // 1. Validar Cliente
         let currentClient = client;
         if (!currentClient) {
+            // Si no existe, es obligatorio el nombre
             if(!name.trim()) {
-                toast.error("Nombre requerido para cliente nuevo");
+                toast.error("El cliente es nuevo. Ingresa su nombre.");
                 setLoading(false);
                 return;
             }
+            // Crear cliente al vuelo
             currentClient = await supabaseApi.createClient(phone, name);
         }
 
-        // 2. Create Booking (Immediate)
+        // 2. Validar Datos de Cita
+        if (!selectedBarberId || !selectedServiceId) {
+             toast.error("Faltan datos de la cita");
+             setLoading(false);
+             return;
+        }
+
+        // 3. Crear Reserva "Walk-in" (NOW)
         await supabaseApi.createBooking({
             clientPhone: currentClient.celular,
             barberId: selectedBarberId,
             serviceId: selectedServiceId,
-            date: new Date(), // NOW
-            status: BookingStatus.CONFIRMADO,
+            date: new Date(), // Esto asegura que la fecha sea AHORA MISMO
+            status: BookingStatus.CONFIRMADO, // Entra directo confirmado
             origin: 'walkin',
-            branchId: 'b1' // Defaulting to first branch for walkins
+            branchId: 'b1' 
         });
 
         toast.success(`Walk-in registrado: ${currentClient.nombre_completo}`);
-        onSuccess();
+        onSuccess(); // Refresh dashboard
         onClose();
 
     } catch (error) {
-        toast.error("Error al registrar walk-in");
+        console.error(error);
+        toast.error("No se pudo crear la cita. Intenta de nuevo.");
     } finally {
         setLoading(false);
     }
   };
 
   if (!isOpen) return null;
+
+  const isPhoneValid = phone.length >= 8;
+  const canSubmit = isPhoneValid && (client || name.length > 0) && !isChecking;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -130,8 +145,8 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
                         <input 
                             type="tel"
                             value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder="Buscar o ingresar número..."
+                            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} // Solo números
+                            placeholder="Ej: 70012345"
                             autoFocus
                             className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-4 pl-4 pr-12 text-xl font-bold text-white focus:border-amber-500 focus:outline-none placeholder-white/10"
                         />
@@ -143,7 +158,7 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
                     </div>
                 </div>
 
-                {/* 2. Identity State */}
+                {/* 2. Identity State (Replicate Client Logic) */}
                 <AnimatePresence mode="wait">
                     {client ? (
                         <motion.div 
@@ -160,7 +175,7 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
                             </div>
                         </motion.div>
                     ) : (
-                        phone.length >= 8 && !isChecking && (
+                        isPhoneValid && !isChecking && (
                             <motion.div 
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
@@ -172,7 +187,7 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="Nombre Completo"
-                                    className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 px-4 text-white focus:border-amber-500 focus:outline-none"
+                                    className="w-full bg-[#0a0a0a] border border-amber-500/50 rounded-xl py-3 px-4 text-white focus:border-amber-500 focus:outline-none"
                                 />
                             </motion.div>
                         )
@@ -213,8 +228,12 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
 
                 <button 
                     type="submit"
-                    disabled={loading || (phone.length < 8)}
-                    className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-white/90 transition-colors flex items-center justify-center space-x-2 shadow-lg shadow-white/10"
+                    disabled={loading || !canSubmit}
+                    className={`w-full font-bold py-4 rounded-xl transition-all flex items-center justify-center space-x-2 shadow-lg ${
+                        canSubmit 
+                            ? 'bg-white text-black hover:bg-white/90 shadow-white/10' 
+                            : 'bg-white/10 text-white/30 cursor-not-allowed'
+                    }`}
                 >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Clock className="w-5 h-5" />}
                     <span>Ingresar AHORA</span>

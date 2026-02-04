@@ -1,16 +1,27 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { format, addDays, subDays, isSameDay, setHours, setMinutes, startOfToday } from 'date-fns';
+import { 
+  format, 
+  addDays, 
+  subDays, 
+  isSameDay, 
+  startOfWeek, 
+  addWeeks, 
+  subWeeks, 
+  setHours,
+  setMinutes
+} from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Clock, 
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon,
   User,
-  MoreHorizontal,
-  Scissors
+  Scissors,
+  Filter,
+  GripHorizontal
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Booking, BookingStatus, Barber, Service } from '../../types';
 import { supabaseApi } from '../../lib/mockSupabase';
 import { EditBookingModal } from './EditBookingModal';
@@ -21,17 +32,23 @@ interface BookingsManagerProps {
   onRefresh: () => void;
 }
 
-// Generar horas de 09:00 a 21:00
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 9); // [9, 10, ..., 21]
+// Horas de operación (09:00 - 21:00)
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 9); 
 
 export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, loading, onRefresh }) => {
-  const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  
+  // Data State
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [selectedBarberId, setSelectedBarberId] = useState<string>('all');
+  
+  // Drag State
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  // Fetch aux data
+  // Initial Fetch
   useEffect(() => {
     Promise.all([
         supabaseApi.getBarbers(),
@@ -42,114 +59,197 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
     });
   }, []);
 
-  const handlePrevDay = () => setSelectedDate(prev => subDays(prev, 1));
-  const handleNextDay = () => setSelectedDate(prev => addDays(prev, 1));
-  const handleToday = () => setSelectedDate(startOfToday());
+  // Navigation Logic
+  const handlePrevWeek = () => setCurrentDate(prev => subWeeks(prev, 1));
+  const handleNextWeek = () => setCurrentDate(prev => addWeeks(prev, 1));
+  const handleToday = () => setCurrentDate(new Date());
 
-  const handleEdit = (booking: Booking) => {
-    setSelectedBooking(booking);
-    setIsEditModalOpen(true);
+  // Generate Week Days (Monday to Friday)
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // 1 = Monday
+    return Array.from({ length: 5 }, (_, i) => addDays(start, i));
+  }, [currentDate]);
+
+  // Filtering Logic
+  const filteredBookings = useMemo(() => {
+    let filtered = bookings.filter(b => b.estado !== BookingStatus.CANCELADO);
+    if (selectedBarberId !== 'all') {
+        filtered = filtered.filter(b => b.barbero.id === selectedBarberId);
+    }
+    return filtered;
+  }, [bookings, selectedBarberId]);
+
+  // Drag & Drop Handlers
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('bookingId', id);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggingId(id);
   };
 
-  // Filtrar reservas del día seleccionado (Mostramos todas menos CANCELADO para mantener historial visual, o mostramos todo con estilo distinto)
-  // Decisión: Mostrar TODO lo que ocupe espacio o haya ocurrido
-  const dayBookings = useMemo(() => {
-    return bookings.filter(b => isSameDay(b.fecha_hora, selectedDate) && b.estado !== BookingStatus.CANCELADO);
-  }, [bookings, selectedDate]);
-
-  // Función para encontrar reserva en una celda específica (Barbero + Hora)
-  const getBookingForSlot = (barberId: string, hour: number) => {
-    return dayBookings.find(b => {
-        const bookingHour = b.fecha_hora.getHours();
-        return b.barbero.id === barberId && bookingHour === hour;
-    });
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Essential to allow dropping
+    e.dataTransfer.dropEffect = 'move';
   };
 
-  if (loading) return <div className="text-white/50 p-8">Cargando calendario...</div>;
+  const handleDrop = async (e: React.DragEvent, targetDate: Date, targetHour: number) => {
+    e.preventDefault();
+    const bookingId = e.dataTransfer.getData('bookingId');
+    setDraggingId(null);
+
+    if (!bookingId) return;
+
+    // Calculate new Date object
+    const newDate = new Date(targetDate);
+    newDate.setHours(targetHour, 0, 0, 0);
+
+    // Optimistic Update / API Call
+    const toastId = toast.loading('Reprogramando cita...');
+    try {
+        const booking = bookings.find(b => b.id === bookingId);
+        if(!booking) throw new Error("Booking not found");
+
+        await supabaseApi.updateBookingDetails(bookingId, {
+            date: newDate,
+            time: `${targetHour.toString().padStart(2, '0')}:00`,
+            serviceId: booking.servicio.id,
+            barberId: booking.barbero.id
+        });
+        
+        toast.success(`Cita movida al ${format(newDate, 'EEEE d HH:mm', { locale: es })}`, { id: toastId });
+        onRefresh();
+    } catch (error) {
+        toast.error('Error al mover la cita', { id: toastId });
+    }
+  };
+
+  const getBookingsForSlot = (date: Date, hour: number) => {
+    return filteredBookings.filter(b => 
+        isSameDay(b.fecha_hora, date) && 
+        b.fecha_hora.getHours() === hour
+    );
+  };
+
+  if (loading) return <div className="text-white/50 p-8">Cargando agenda semanal...</div>;
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] rounded-3xl border border-white/5 overflow-hidden">
         
-        {/* Header: Date Navigation */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-[#121212]">
+        {/* Header Controls */}
+        <div className="flex flex-col md:flex-row items-center justify-between p-6 border-b border-white/5 bg-[#121212] gap-4">
+            
+            {/* Date Nav */}
             <div className="flex items-center space-x-4">
                 <div className="flex items-center bg-black/40 rounded-xl p-1 border border-white/5">
-                    <button onClick={handlePrevDay} className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors">
+                    <button onClick={handlePrevWeek} className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors">
                         <ChevronLeft className="w-5 h-5" />
                     </button>
                     <button onClick={handleToday} className="px-4 text-sm font-bold text-white/80 hover:text-white transition-colors">
                         Hoy
                     </button>
-                    <button onClick={handleNextDay} className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors">
+                    <button onClick={handleNextWeek} className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors">
                         <ChevronRight className="w-5 h-5" />
                     </button>
                 </div>
-                <h2 className="text-2xl font-bold text-white capitalize flex items-center gap-2">
-                    <CalendarIcon className="w-6 h-6 text-amber-500" />
-                    {format(selectedDate, 'EEEE d MMMM', { locale: es })}
+                <h2 className="text-xl font-bold text-white capitalize flex items-center gap-2">
+                    <CalendarIcon className="w-5 h-5 text-amber-500" />
+                    {format(weekDays[0], 'MMM d', { locale: es })} - {format(weekDays[4], 'MMM d', { locale: es })}
                 </h2>
             </div>
-            
-            {/* Legend */}
-            <div className="flex items-center space-x-4 text-xs font-medium text-white/40">
-                <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-500" />
-                    <span>Pendiente</span>
+
+            {/* Barber Filter */}
+            <div className="flex items-center space-x-3 bg-black/20 p-1.5 rounded-xl border border-white/5">
+                <div className="px-3 flex items-center gap-2 text-white/40">
+                    <Filter className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Ver:</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span>Confirmado</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-500" />
-                    <span>Finalizado</span>
-                </div>
+                <select 
+                    value={selectedBarberId}
+                    onChange={(e) => setSelectedBarberId(e.target.value)}
+                    className="bg-transparent text-white text-sm font-medium focus:outline-none cursor-pointer hover:text-amber-500 transition-colors"
+                >
+                    <option value="all">Todos los Barberos</option>
+                    {barbers.map(b => (
+                        <option key={b.id} value={b.id}>{b.nombre}</option>
+                    ))}
+                </select>
+                {selectedBarberId !== 'all' && (
+                    <img 
+                        src={barbers.find(b => b.id === selectedBarberId)?.foto_url} 
+                        className="w-6 h-6 rounded-full border border-white/10"
+                    />
+                )}
             </div>
         </div>
 
-        {/* Calendar Grid */}
-        <div className="flex-1 overflow-auto no-scrollbar relative">
-            <div className="min-w-[800px]">
-                {/* Grid Header (Barbers) */}
-                <div className="sticky top-0 z-20 flex border-b border-white/5 bg-[#0a0a0a]">
-                    <div className="w-20 shrink-0 border-r border-white/5 p-4 flex items-center justify-center text-white/30 font-mono text-xs">
-                        HORA
-                    </div>
-                    {barbers.map(barber => (
-                        <div key={barber.id} className="flex-1 p-4 flex items-center justify-center gap-3 border-r border-white/5 last:border-r-0 bg-[#0a0a0a]">
-                            <img src={barber.foto_url} className="w-8 h-8 rounded-full border border-white/10" alt="" />
-                            <span className="font-bold text-white">{barber.nombre}</span>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Grid Body (Time Slots) */}
-                <div className="relative">
-                    {HOURS.map(hour => (
-                        <div key={hour} className="flex border-b border-white/5 h-28 hover:bg-white/[0.02] transition-colors group">
-                            {/* Time Column */}
-                            <div className="w-20 shrink-0 border-r border-white/5 flex flex-col items-center justify-center text-white/40 font-mono text-sm group-hover:text-white/70">
-                                <span>{hour}:00</span>
+        {/* Weekly Grid */}
+        <div className="flex-1 overflow-auto no-scrollbar relative flex flex-col">
+            
+            {/* Days Header */}
+            <div className="sticky top-0 z-20 flex border-b border-white/5 bg-[#0a0a0a]">
+                <div className="w-16 shrink-0 border-r border-white/5 bg-[#121212]" /> {/* Time Col Spacer */}
+                {weekDays.map(day => {
+                    const isToday = isSameDay(day, new Date());
+                    return (
+                        <div key={day.toISOString()} className={`flex-1 p-3 text-center border-r border-white/5 last:border-r-0 ${isToday ? 'bg-amber-500/5' : ''}`}>
+                            <p className="text-xs font-bold uppercase text-white/40 mb-1">{format(day, 'EEEE', { locale: es })}</p>
+                            <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${isToday ? 'bg-amber-500 text-black' : 'text-white'}`}>
+                                {format(day, 'd')}
                             </div>
-
-                            {/* Barber Columns */}
-                            {barbers.map(barber => {
-                                const booking = getBookingForSlot(barber.id, hour);
-                                return (
-                                    <div key={`${barber.id}-${hour}`} className="flex-1 border-r border-white/5 last:border-r-0 p-2 relative">
-                                        {booking ? (
-                                            <CalendarCard booking={booking} onClick={() => handleEdit(booking)} />
-                                        ) : (
-                                            <div className="w-full h-full rounded-xl border-2 border-dashed border-white/5 flex items-center justify-center opacity-0 hover:opacity-100 hover:border-white/10 transition-all cursor-default">
-                                                <span className="text-xs text-white/20 uppercase font-bold tracking-widest">Libre</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
                         </div>
-                    ))}
-                </div>
+                    );
+                })}
+            </div>
+
+            {/* Grid Body */}
+            <div className="flex-1 relative min-w-[800px]">
+                {HOURS.map(hour => (
+                    <div key={hour} className="flex border-b border-white/5 min-h-[100px]">
+                        
+                        {/* Time Label */}
+                        <div className="w-16 shrink-0 border-r border-white/5 flex items-start justify-center pt-2 bg-[#121212]">
+                            <span className="text-xs font-mono text-white/30">{hour}:00</span>
+                        </div>
+
+                        {/* Days Columns */}
+                        {weekDays.map(day => {
+                            const slotBookings = getBookingsForSlot(day, hour);
+                            const isToday = isSameDay(day, new Date());
+                            
+                            return (
+                                <div 
+                                    key={`${day.toISOString()}-${hour}`}
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, day, hour)}
+                                    className={`
+                                        flex-1 border-r border-white/5 last:border-r-0 p-1 relative transition-colors
+                                        ${isToday ? 'bg-amber-500/[0.02]' : ''}
+                                        hover:bg-white/[0.02]
+                                    `}
+                                >
+                                    {/* Empty Slot Visual Hint (only on hover with drag logic conceptually, but CSS hover works for now) */}
+                                    {slotBookings.length === 0 && (
+                                        <div className="w-full h-full rounded-lg border-2 border-dashed border-transparent hover:border-white/5 transition-all" />
+                                    )}
+
+                                    {/* Render Bookings */}
+                                    <div className="flex flex-col gap-1">
+                                        {slotBookings.map(booking => (
+                                            <DraggableBookingCard 
+                                                key={booking.id} 
+                                                booking={booking} 
+                                                onDragStart={handleDragStart}
+                                                onClick={() => {
+                                                    setSelectedBooking(booking);
+                                                    setIsEditModalOpen(true);
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ))}
             </div>
         </div>
 
@@ -167,83 +267,57 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
 
 // --- SUB COMPONENTS ---
 
-const CalendarCard = ({ booking, onClick }: { booking: Booking; onClick: () => void }) => {
-    const status = booking.estado;
+const DraggableBookingCard = ({ booking, onDragStart, onClick }: { 
+    booking: Booking, 
+    onDragStart: (e: React.DragEvent, id: string) => void,
+    onClick: () => void 
+}) => {
+    const isCompleted = booking.estado === BookingStatus.COMPLETADO || booking.estado === BookingStatus.NO_SHOW;
     
-    // Style Mapping
-    let baseStyles = '';
-    let stripeColor = '';
-    let textStatus = '';
-    let textStatusColor = '';
-
-    switch(status) {
-        case BookingStatus.CONFIRMADO:
-            baseStyles = 'bg-green-500/10 border-green-500/20 hover:border-green-500/40';
-            stripeColor = 'bg-green-500';
-            textStatus = 'Confirmado';
-            textStatusColor = 'text-green-400';
-            break;
-        case BookingStatus.COMPLETADO:
-            baseStyles = 'bg-blue-900/10 border-blue-500/10 hover:border-blue-500/30 opacity-70 grayscale-[0.3]';
-            stripeColor = 'bg-blue-500';
-            textStatus = 'Finalizado';
-            textStatusColor = 'text-blue-400';
-            break;
-        case BookingStatus.NO_SHOW:
-            baseStyles = 'bg-red-900/10 border-red-500/20 opacity-60';
-            stripeColor = 'bg-red-500';
-            textStatus = 'No Show';
-            textStatusColor = 'text-red-400 decoration-line-through';
-            break;
-        default: // PENDIENTE
-            baseStyles = 'bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40';
-            stripeColor = 'bg-amber-500';
-            textStatus = 'Pendiente';
-            textStatusColor = 'text-amber-400';
-    }
+    // Status Styles
+    const statusColor = {
+        [BookingStatus.CONFIRMADO]: 'bg-green-500 border-green-500',
+        [BookingStatus.PENDIENTE]: 'bg-amber-500 border-amber-500',
+        [BookingStatus.COMPLETADO]: 'bg-blue-500 border-blue-500',
+        [BookingStatus.NO_SHOW]: 'bg-red-500 border-red-500',
+        [BookingStatus.CANCELADO]: 'bg-gray-500 border-gray-500',
+    }[booking.estado];
 
     return (
-        <motion.button
+        <motion.div
             layoutId={booking.id}
-            onClick={onClick}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            draggable={!isCompleted}
+            onDragStart={(e) => onDragStart(e as any, booking.id)}
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.02, zIndex: 10 }}
             className={`
-                w-full h-full text-left p-3 rounded-xl border flex flex-col justify-between shadow-lg relative overflow-hidden group
-                ${baseStyles}
+                relative p-2 rounded-lg border-l-4 shadow-lg cursor-grab active:cursor-grabbing bg-[#1c1c1c] hover:bg-[#252525] group
+                ${statusColor} border-l-4 border-y border-r border-y-white/5 border-r-white/5
+                ${isCompleted ? 'opacity-60 grayscale' : ''}
             `}
-        >   
-            {/* Status Indicator Stripe */}
-            <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripeColor}`} />
-
-            <div className="pl-2">
-                <div className="flex justify-between items-start">
-                    <span className={`text-xs font-bold uppercase tracking-wider mb-1 ${textStatusColor}`}>
-                        {textStatus}
-                    </span>
-                    {booking.origen === 'walkin' && (
-                        <span className="text-[9px] bg-white/10 text-white/60 px-1 rounded uppercase">Walk-in</span>
-                    )}
-                </div>
-                
-                <h4 className={`text-sm font-bold text-white leading-tight mb-1 line-clamp-2 ${status === BookingStatus.NO_SHOW ? 'line-through text-white/40' : ''}`}>
+        >
+            <div className="flex justify-between items-start mb-1">
+                <span className="text-[10px] font-bold text-white truncate max-w-[80%]">
                     {booking.cliente.nombre_completo}
-                </h4>
-                
-                <div className="flex items-center text-xs text-white/50 gap-1">
-                    <Scissors className="w-3 h-3" />
-                    <span className="truncate">{booking.servicio.nombre}</span>
-                </div>
+                </span>
+                {!isCompleted && <GripHorizontal className="w-3 h-3 text-white/20" />}
+            </div>
+            
+            <div className="flex items-center gap-1 mb-1">
+                <img src={booking.barbero.foto_url} className="w-4 h-4 rounded-full" />
+                <span className="text-[9px] text-white/50 truncate">{booking.barbero.nombre}</span>
             </div>
 
-            <div className="pl-2 flex justify-between items-end mt-1">
-                 <span className="text-[10px] bg-black/40 px-1.5 py-0.5 rounded text-white/40 font-mono">
-                    {booking.cliente.celular}
-                 </span>
-                 {booking.cliente.ranking === 'vip' && (
-                     <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1 rounded">VIP</span>
-                 )}
+            <div className="flex items-center gap-1">
+                 <Scissors className="w-3 h-3 text-white/30" />
+                 <span className="text-[9px] text-white/70 truncate">{booking.servicio.nombre}</span>
             </div>
-        </motion.button>
+
+            {booking.origen === 'walkin' && (
+                <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white animate-pulse" title="Walk-in" />
+            )}
+        </motion.div>
     );
 };

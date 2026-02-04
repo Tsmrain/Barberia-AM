@@ -64,7 +64,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
         });
 
         toast.success("Reserva actualizada correctamente");
-        onSuccess();
+        onSuccess(); // Refresh parent
         onClose();
     } catch (error) {
         toast.error("Error al actualizar");
@@ -73,32 +73,49 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
     }
   };
 
-  const handleStatusChange = async (status: BookingStatus) => {
+  const handleStatusChange = async (e: React.MouseEvent, status: BookingStatus) => {
+    // PREVENIR CUALQUIER INTENTO DE SUBMIT DEL FORMULARIO
+    e.preventDefault();
+    e.stopPropagation();
+    
     if(!booking) return;
-    if(!confirm(`¿Marcar cita como ${status.toUpperCase()}?`)) return;
+    if(!confirm(`¿Confirmar cambio a estado: ${status.toUpperCase().replace('_', ' ')}?`)) return;
 
     setLoading(true);
     try {
         await supabaseApi.updateBookingStatus(booking.id, status);
-        toast.success(`Cita marcada como ${status}`);
-        onSuccess();
-        onClose();
+        toast.success(`Estado actualizado a ${status.replace('_', ' ')}`);
+        
+        // Esperar un micro-tick para asegurar que la UI responda
+        setTimeout(() => {
+            onSuccess();
+            onClose();
+        }, 100);
     } catch (error) {
+        console.error(error);
         toast.error("Error al actualizar estado");
     } finally {
         setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if(!booking) return;
-    if(!confirm('¿Eliminar definitivamente esta reserva?')) return;
+    if(!confirm('¿Estás seguro de ELIMINAR esta cita? Esta acción no se puede deshacer.')) return;
+    
     setLoading(true);
     try {
         await supabaseApi.deleteBooking(booking.id);
-        toast.success("Reserva eliminada");
-        onSuccess();
-        onClose();
+        toast.success("Reserva eliminada permanentemente");
+        setTimeout(() => {
+            onSuccess();
+            onClose();
+        }, 100);
+    } catch(err) {
+        toast.error("Error al eliminar reserva");
     } finally {
         setLoading(false);
     }
@@ -224,7 +241,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                 </div>
 
                 <div className="pt-4 flex flex-col gap-3">
-                    {/* Primary Update Action */}
+                    {/* Primary Update Action (Save Changes) */}
                     {!isTerminated && (
                         <button 
                             type="submit"
@@ -242,8 +259,8 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                             <>
                                 <button 
                                     type="button"
-                                    onClick={() => handleStatusChange(BookingStatus.COMPLETADO)}
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors"
+                                    onClick={(e) => handleStatusChange(e, BookingStatus.COMPLETADO)}
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors border border-transparent hover:border-blue-500/30"
                                 >
                                     <CheckCircle2 className="w-5 h-5 mb-1" />
                                     <span className="text-[10px] font-bold uppercase">Completado</span>
@@ -251,8 +268,8 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
 
                                 <button 
                                     type="button"
-                                    onClick={() => handleStatusChange(BookingStatus.NO_SHOW)}
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+                                    onClick={(e) => handleStatusChange(e, BookingStatus.NO_SHOW)}
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors border border-transparent hover:border-red-500/30"
                                 >
                                     <Ban className="w-5 h-5 mb-1" />
                                     <span className="text-[10px] font-bold uppercase">No Show</span>
@@ -261,7 +278,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                                 <button 
                                     type="button"
                                     onClick={handleDelete}
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-white/5 hover:bg-red-900/20 text-white/40 hover:text-red-400 transition-colors"
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-white/5 hover:bg-red-900/20 text-white/40 hover:text-red-400 transition-colors border border-transparent hover:border-red-500/30"
                                 >
                                     <Trash2 className="w-5 h-5 mb-1" />
                                     <span className="text-[10px] font-bold uppercase">Eliminar</span>
@@ -269,7 +286,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                             </>
                         ) : (
                             <div className="col-span-3 text-center text-white/30 text-xs italic">
-                                Esta cita ha finalizado. No se pueden realizar más cambios.
+                                Esta cita ha finalizado.
                             </div>
                         )}
                     </div>
