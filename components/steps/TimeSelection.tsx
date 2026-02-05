@@ -5,7 +5,7 @@ import { format, addDays, isSameDay, startOfToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useBooking } from '../../store/BookingContext';
-import { supabaseApi } from '../../lib/mockSupabase';
+import { bookingService } from '../../lib/services';
 
 export const TimeSelection: React.FC = () => {
   const { setStep, setDate, setTime, selectedBarber } = useBooking();
@@ -22,28 +22,28 @@ export const TimeSelection: React.FC = () => {
     '09:00', '10:00', '11:00', '12:00'
   ];
   const afternoonSlots = [
-    '13:00', '14:00', '15:00', '16:00', 
+    '13:00', '14:00', '15:00', '16:00',
     '17:00', '18:00', '19:00', '20:00', '21:00'
   ];
 
   // Fetch availability when date or barber changes
   useEffect(() => {
     const fetchAvailability = async () => {
-        if (!selectedBarber) return;
-        
-        setLoadingSlots(true);
-        setTakenSlots([]); // Reset visuals while loading
-        setSelectedTimeSlot(null); // Deselect time when changing day
+      if (!selectedBarber) return;
 
-        try {
-            const taken = await supabaseApi.getTakenSlots(selectedDay, selectedBarber.id);
-            setTakenSlots(taken);
-        } catch (error) {
-            console.error("Failed to fetch slots", error);
-            toast.error("Error al cargar horarios. Intenta de nuevo.");
-        } finally {
-            setLoadingSlots(false);
-        }
+      setLoadingSlots(true);
+      setTakenSlots([]); // Reset visuals while loading
+      setSelectedTimeSlot(null); // Deselect time when changing day
+
+      try {
+        const taken = await bookingService.getTakenSlots(selectedDay, selectedBarber.id);
+        setTakenSlots(taken);
+      } catch (error) {
+        console.error("Failed to fetch slots", error);
+        toast.error("Error al cargar horarios. Intenta de nuevo.");
+      } finally {
+        setLoadingSlots(false);
+      }
     };
 
     fetchAvailability();
@@ -65,25 +65,25 @@ export const TimeSelection: React.FC = () => {
     const { isPast } = checkSlotAvailability(time);
 
     if (isPast) {
-         toast.error('Este horario ya ha pasado', {
-            icon: <Ban className="w-5 h-5 text-red-400" />,
-            style: { background: 'rgba(20, 0, 0, 0.6)' }
-        });
-        return;
+      toast.error('Este horario ya ha pasado', {
+        icon: <Ban className="w-5 h-5 text-red-400" />,
+        style: { background: 'rgba(20, 0, 0, 0.6)' }
+      });
+      return;
     }
 
     if (isTaken) {
-        // Feedback elegante de error
-        toast.error('Este horario ya no está disponible', {
-            description: 'Por favor selecciona otro momento para tu corte.',
-            duration: 3000,
-            icon: <Ban className="w-5 h-5 text-red-400" />,
-            style: {
-                borderColor: 'rgba(239, 68, 68, 0.2)',
-                background: 'rgba(20, 0, 0, 0.6)'
-            }
-        });
-        return;
+      // Feedback elegante de error
+      toast.error('Este horario ya no está disponible', {
+        description: 'Por favor selecciona otro momento para tu corte.',
+        duration: 3000,
+        icon: <Ban className="w-5 h-5 text-red-400" />,
+        style: {
+          borderColor: 'rgba(239, 68, 68, 0.2)',
+          background: 'rgba(20, 0, 0, 0.6)'
+        }
+      });
+      return;
     }
 
     // Success selection
@@ -91,23 +91,23 @@ export const TimeSelection: React.FC = () => {
   };
 
   const checkSlotAvailability = (time: string) => {
-      const isTaken = takenSlots.includes(time);
-      
-      // Check Past Time
-      const now = new Date();
-      const isToday = isSameDay(selectedDay, now);
-      let isPast = false;
+    const isTaken = takenSlots.includes(time);
 
-      if (isToday) {
-          const slotHour = parseInt(time.split(':')[0]);
-          const currentHour = now.getHours();
-          // If slot hour is strictly less than current hour, it's past.
-          // If slot hour equals current hour, technically the hour started, so it's past for a full appointment.
-          if (slotHour <= currentHour) {
-              isPast = true;
-          }
+    // Check Past Time
+    const now = new Date();
+    const isToday = isSameDay(selectedDay, now);
+    let isPast = false;
+
+    if (isToday) {
+      const slotHour = parseInt(time.split(':')[0]);
+      const currentHour = now.getHours();
+      // If slot hour is strictly less than current hour, it's past.
+      // If slot hour equals current hour, technically the hour started, so it's past for a full appointment.
+      if (slotHour <= currentHour) {
+        isPast = true;
       }
-      return { isTaken, isPast };
+    }
+    return { isTaken, isPast };
   };
 
   const renderTimeSlot = (time: string) => {
@@ -116,22 +116,22 @@ export const TimeSelection: React.FC = () => {
     const isUnavailable = isTaken || isPast;
 
     return (
-        <button
-            key={time}
-            onClick={() => handleSlotClick(time)}
-            className={`
+      <button
+        key={time}
+        onClick={() => handleSlotClick(time)}
+        className={`
                 relative py-3 rounded-xl text-xs font-medium border transition-all duration-200
                 ${loadingSlots ? 'opacity-50 cursor-wait' : ''}
-                ${isUnavailable 
-                    ? 'bg-white/5 border-white/5 text-white/20 decoration-white/20 line-through cursor-pointer' 
-                    : isSelected
-                        ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-105'
-                        : 'bg-white/5 border-white/10 text-white/80 hover:border-amber-500/50 hover:text-amber-500'
-                }
+                ${isUnavailable
+            ? 'bg-white/5 border-white/5 text-white/20 decoration-white/20 line-through cursor-pointer'
+            : isSelected
+              ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-105'
+              : 'bg-white/5 border-white/10 text-white/80 hover:border-amber-500/50 hover:text-amber-500'
+          }
             `}
-        >
-            {time}
-        </button>
+      >
+        {time}
+      </button>
     );
   };
 
@@ -147,8 +147,8 @@ export const TimeSelection: React.FC = () => {
       <div className="mb-6">
         <h2 className="text-3xl font-bold text-white mb-2">Reserva tu lugar</h2>
         <div className="flex items-center space-x-2 text-white/50">
-            <span>Agenda con <span className="text-amber-500">{selectedBarber?.nombre}</span></span>
-            {loadingSlots && <Loader2 className="w-3 h-3 animate-spin text-amber-500" />}
+          <span>Agenda con <span className="text-amber-500">{selectedBarber?.nombre}</span></span>
+          {loadingSlots && <Loader2 className="w-3 h-3 animate-spin text-amber-500" />}
         </div>
       </div>
 
@@ -161,11 +161,10 @@ export const TimeSelection: React.FC = () => {
               <button
                 key={day.toISOString()}
                 onClick={() => setSelectedDay(day)}
-                className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-2xl border transition-all duration-200 ${
-                  isSelected
+                className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-2xl border transition-all duration-200 ${isSelected
                     ? 'bg-amber-500 border-amber-500 text-black shadow-lg shadow-amber-500/20'
                     : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
-                }`}
+                  }`}
               >
                 <span className="text-xs font-medium uppercase">{format(day, 'EEE', { locale: es })}</span>
                 <span className="text-xl font-bold">{format(day, 'd')}</span>
@@ -197,11 +196,10 @@ export const TimeSelection: React.FC = () => {
         <button
           onClick={handleConfirm}
           disabled={!selectedTimeSlot}
-          className={`w-full py-4 rounded-full font-bold text-lg transition-all duration-300 ${
-            selectedTimeSlot
+          className={`w-full py-4 rounded-full font-bold text-lg transition-all duration-300 ${selectedTimeSlot
               ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]'
               : 'bg-white/10 text-white/20 cursor-not-allowed'
-          }`}
+            }`}
         >
           Continuar
         </button>

@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
 import { useBooking } from '../../store/BookingContext';
-import { supabaseApi } from '../../lib/mockSupabase';
-import { Barber } from '../../types';
+import { bookingService } from '../../lib/services';
+import type { Barber } from '../../lib/supabase/types';
 
 export const BarberSelection: React.FC = () => {
   const { setStep, setBarber, selectedService, selectedBranch } = useBooking();
@@ -13,9 +13,9 @@ export const BarberSelection: React.FC = () => {
   useEffect(() => {
     const fetchBarbers = async () => {
       if (selectedBranch) {
-          // Filter barbers by the selected branch
-          const data = await supabaseApi.getBarbers(selectedBranch.id);
-          setBarbers(data);
+        // Filter barbers by the selected branch
+        const data = await bookingService.getBarbers(selectedBranch.id);
+        setBarbers(data);
       }
       setLoading(false);
     };
@@ -58,20 +58,20 @@ export const BarberSelection: React.FC = () => {
             >
               {/* Circular Image Container */}
               <div className="relative mb-4">
-                  <div className="w-24 h-24 rounded-full p-1 border-2 border-white/10 group-hover:border-amber-500/50 transition-colors">
-                      <img 
-                        src={barber.foto_url} 
-                        alt={barber.nombre} 
-                        className="w-full h-full rounded-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                      />
+                <div className="w-24 h-24 rounded-full p-1 border-2 border-white/10 group-hover:border-amber-500/50 transition-colors">
+                  <img
+                    src={barber.foto_url}
+                    alt={barber.nombre}
+                    className="w-full h-full rounded-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                  />
+                </div>
+                {barber.activo && (
+                  <div className="absolute bottom-1 right-1 w-5 h-5 bg-[#121212] rounded-full flex items-center justify-center border border-white/10">
+                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
                   </div>
-                  {barber.activo && (
-                      <div className="absolute bottom-1 right-1 w-5 h-5 bg-[#121212] rounded-full flex items-center justify-center border border-white/10">
-                         <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
-                      </div>
-                  )}
+                )}
               </div>
-              
+
               <div className="flex flex-col gap-1">
                 <h3 className="text-lg font-bold text-white group-hover:text-amber-500 transition-colors">{barber.nombre}</h3>
                 <p className="text-xs text-white/50 line-clamp-2">{barber.bio_corta}</p>
@@ -79,9 +79,9 @@ export const BarberSelection: React.FC = () => {
             </motion.div>
           ))
         ) : (
-             <div className="col-span-2 text-center text-white/40 py-10 italic">
-                No hay barberos disponibles en esta sucursal.
-             </div>
+          <div className="col-span-2 text-center text-white/40 py-10 italic">
+            No hay barberos disponibles en esta sucursal.
+          </div>
         )}
       </div>
     </div>
