@@ -20,10 +20,11 @@ import {
   Scissors,
   Filter,
   GripHorizontal,
-  Ban
+  Ban,
+  MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Booking, BookingStatus, Barber, Service } from '../../types';
+import { Booking, BookingStatus, Barber, Service, Branch } from '../../types';
 import { supabaseApi } from '../../lib/mockSupabase';
 import { EditBookingModal } from './EditBookingModal';
 
@@ -42,8 +43,12 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   // Data State
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  
+  // Filters State
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('all');
   const [selectedBarberId, setSelectedBarberId] = useState<string>('all');
   
   // Drag State
@@ -53,10 +58,12 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
   useEffect(() => {
     Promise.all([
         supabaseApi.getBarbers(),
-        supabaseApi.getServices()
-    ]).then(([b, s]) => {
+        supabaseApi.getServices(),
+        supabaseApi.getBranches()
+    ]).then(([b, s, br]) => {
         setBarbers(b);
         setServices(s);
+        setBranches(br);
     });
   }, []);
 
@@ -74,11 +81,18 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
   // Filtering Logic
   const filteredBookings = useMemo(() => {
     let filtered = bookings.filter(b => b.estado !== BookingStatus.CANCELADO);
+    
+    // Filter by Branch
+    if (selectedBranchId !== 'all') {
+        filtered = filtered.filter(b => b.sucursal.id === selectedBranchId);
+    }
+
+    // Filter by Barber
     if (selectedBarberId !== 'all') {
         filtered = filtered.filter(b => b.barbero.id === selectedBarberId);
     }
     return filtered;
-  }, [bookings, selectedBarberId]);
+  }, [bookings, selectedBarberId, selectedBranchId]);
 
   // Drag & Drop Handlers
   const handleDragStart = (e: React.DragEvent, id: string) => {
@@ -180,10 +194,10 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
     <div className="flex flex-col h-full bg-[#0a0a0a] rounded-3xl border border-white/5 overflow-hidden">
         
         {/* Header Controls */}
-        <div className="flex flex-col md:flex-row items-center justify-between p-6 border-b border-white/5 bg-[#121212] gap-4">
+        <div className="flex flex-col xl:flex-row items-center justify-between p-6 border-b border-white/5 bg-[#121212] gap-4">
             
             {/* Date Nav */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 w-full xl:w-auto justify-center xl:justify-start">
                 <div className="flex items-center bg-black/40 rounded-xl p-1 border border-white/5">
                     <button onClick={handlePrevWeek} className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors">
                         <ChevronLeft className="w-5 h-5" />
@@ -201,28 +215,54 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
                 </h2>
             </div>
 
-            {/* Barber Filter */}
-            <div className="flex items-center space-x-3 bg-black/20 p-1.5 rounded-xl border border-white/5">
-                <div className="px-3 flex items-center gap-2 text-white/40">
-                    <Filter className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">Ver:</span>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto justify-center xl:justify-end">
+                
+                {/* Branch Filter */}
+                <div className="flex items-center space-x-3 bg-black/20 p-1.5 rounded-xl border border-white/5 w-full sm:w-auto justify-center">
+                    <div className="px-3 flex items-center gap-2 text-white/40">
+                        <MapPin className="w-4 h-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Sucursal:</span>
+                    </div>
+                    <select 
+                        value={selectedBranchId}
+                        onChange={(e) => {
+                            setSelectedBranchId(e.target.value);
+                            setSelectedBarberId('all'); // Reset barber when branch changes
+                        }}
+                        className="bg-transparent text-white text-sm font-medium focus:outline-none cursor-pointer hover:text-amber-500 transition-colors"
+                    >
+                        <option value="all">Todas</option>
+                        {branches.map(b => (
+                            <option key={b.id} value={b.id}>{b.nombre}</option>
+                        ))}
+                    </select>
                 </div>
-                <select 
-                    value={selectedBarberId}
-                    onChange={(e) => setSelectedBarberId(e.target.value)}
-                    className="bg-transparent text-white text-sm font-medium focus:outline-none cursor-pointer hover:text-amber-500 transition-colors"
-                >
-                    <option value="all">Todos los Barberos</option>
-                    {barbers.map(b => (
-                        <option key={b.id} value={b.id}>{b.nombre}</option>
-                    ))}
-                </select>
-                {selectedBarberId !== 'all' && (
-                    <img 
-                        src={barbers.find(b => b.id === selectedBarberId)?.foto_url} 
-                        className="w-6 h-6 rounded-full border border-white/10"
-                    />
-                )}
+
+                {/* Barber Filter */}
+                <div className="flex items-center space-x-3 bg-black/20 p-1.5 rounded-xl border border-white/5 w-full sm:w-auto justify-center">
+                    <div className="px-3 flex items-center gap-2 text-white/40">
+                        <Filter className="w-4 h-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Barbero:</span>
+                    </div>
+                    <select 
+                        value={selectedBarberId}
+                        onChange={(e) => setSelectedBarberId(e.target.value)}
+                        className="bg-transparent text-white text-sm font-medium focus:outline-none cursor-pointer hover:text-amber-500 transition-colors max-w-[150px]"
+                    >
+                        <option value="all">Todos</option>
+                        {barbers
+                            .filter(b => selectedBranchId === 'all' || b.sucursalId === selectedBranchId)
+                            .map(b => (
+                            <option key={b.id} value={b.id}>{b.nombre}</option>
+                        ))}
+                    </select>
+                    {selectedBarberId !== 'all' && (
+                        <img 
+                            src={barbers.find(b => b.id === selectedBarberId)?.foto_url} 
+                            className="w-6 h-6 rounded-full border border-white/10"
+                        />
+                    )}
+                </div>
             </div>
         </div>
 
@@ -322,61 +362,35 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
   );
 };
 
-// --- SUB COMPONENTS ---
-
-interface DraggableBookingCardProps {
+const DraggableBookingCard: React.FC<{
   booking: Booking;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onClick: () => void;
-}
-
-const DraggableBookingCard: React.FC<DraggableBookingCardProps> = ({ booking, onDragStart, onClick }) => {
-    const isCompleted = booking.estado === BookingStatus.COMPLETADO || booking.estado === BookingStatus.NO_SHOW;
-    
-    // Status Styles
-    const statusColor = {
-        [BookingStatus.CONFIRMADO]: 'bg-green-500 border-green-500',
-        [BookingStatus.PENDIENTE]: 'bg-amber-500 border-amber-500',
-        [BookingStatus.COMPLETADO]: 'bg-blue-500 border-blue-500',
-        [BookingStatus.NO_SHOW]: 'bg-red-500 border-red-500',
-        [BookingStatus.CANCELADO]: 'bg-gray-500 border-gray-500',
-    }[booking.estado];
-
-    return (
-        <motion.div
-            layoutId={booking.id}
-            draggable={!isCompleted}
-            onDragStart={(e) => onDragStart(e as any, booking.id)}
-            onClick={(e) => { e.stopPropagation(); onClick(); }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ scale: 1.02, zIndex: 10 }}
-            className={`
-                relative p-2 rounded-lg border-l-4 shadow-lg cursor-grab active:cursor-grabbing bg-[#1c1c1c] hover:bg-[#252525] group
-                ${statusColor} border-l-4 border-y border-r border-y-white/5 border-r-white/5
-                ${isCompleted ? 'opacity-60 grayscale' : ''}
-            `}
-        >
-            <div className="flex justify-between items-start mb-1">
-                <span className="text-[10px] font-bold text-white truncate max-w-[80%]">
-                    {booking.cliente.nombre_completo}
-                </span>
-                {!isCompleted && <GripHorizontal className="w-3 h-3 text-white/20" />}
-            </div>
-            
-            <div className="flex items-center gap-1 mb-1">
-                <img src={booking.barbero.foto_url} className="w-4 h-4 rounded-full" />
-                <span className="text-[9px] text-white/50 truncate">{booking.barbero.nombre}</span>
-            </div>
-
-            <div className="flex items-center gap-1">
-                 <Scissors className="w-3 h-3 text-white/30" />
-                 <span className="text-[9px] text-white/70 truncate">{booking.servicio.nombre}</span>
-            </div>
-
-            {booking.origen === 'walkin' && (
-                <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white animate-pulse" title="Walk-in" />
-            )}
-        </motion.div>
-    );
+}> = ({ booking, onDragStart, onClick }) => {
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, booking.id)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={`
+        group relative p-2 rounded-lg text-xs cursor-grab active:cursor-grabbing border select-none transition-all shadow-md
+        ${booking.estado === BookingStatus.CONFIRMADO 
+            ? 'bg-amber-500 text-black border-amber-600 hover:bg-amber-400' 
+            : booking.estado === BookingStatus.COMPLETADO 
+                ? 'bg-blue-600 text-white border-blue-500 hover:bg-blue-500' 
+                : booking.estado === BookingStatus.NO_SHOW 
+                    ? 'bg-red-600 text-white border-red-500 hover:bg-red-500'
+                    : 'bg-[#1a1a1a] text-white/90 border-white/10 hover:border-white/30 hover:bg-[#222]'}
+      `}
+    >
+      <div className="font-bold truncate leading-tight mb-0.5">{booking.cliente.nombre_completo.split(' ')[0]}</div>
+      <div className="flex items-center gap-1 opacity-70 text-[10px]">
+        <Scissors className="w-3 h-3" />
+        <span className="truncate">{booking.servicio.nombre}</span>
+      </div>
+    </div>
+  );
 };

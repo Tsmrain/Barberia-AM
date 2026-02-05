@@ -168,7 +168,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ bookings, loading 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue by Barber Chart */}
+        {/* Revenue by Branch / Barber Chart */}
         <div className="bg-[#121212] border border-white/5 rounded-3xl p-6">
             <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                 <Users className="w-5 h-5 text-amber-500" />
@@ -178,7 +178,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ bookings, loading 
                 <div className="space-y-5">
                     {Object.entries(stats.barberRevenue)
                         .sort((a: [string, number], b: [string, number]) => b[1] - a[1])
-                        .map(([name, revenue], index) => (
+                        .map(([name, revenue]: [string, number], index) => (
                         <div key={name}>
                             <div className="flex justify-between text-sm mb-2">
                                 <span className="text-white font-medium flex items-center gap-2">
