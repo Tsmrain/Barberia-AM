@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Booking, BookingStatus, Branch } from '../../types';
-import { TrendingUp, Users, MapPin, DollarSign, Calendar, Filter, ChevronDown } from 'lucide-react';
-import { isSameDay, isSameWeek, isSameMonth, startOfDay } from 'date-fns';
+import { Booking, BookingStatus, Branch, BranchStatus } from '../../types';
+import { TrendingUp, Users, MapPin, DollarSign, Clock, CheckCircle2, XCircle, ChevronDown, RefreshCw } from 'lucide-react';
+import { isSameDay, isSameWeek, isSameMonth } from 'date-fns';
 import { supabaseApi } from '../../lib/mockSupabase';
+import { toast } from 'sonner';
 
 interface DashboardViewProps {
   bookings: Booking[];
@@ -16,10 +17,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ bookings, loading 
   const [selectedBranchId, setSelectedBranchId] = useState<string>('all');
   const [branches, setBranches] = useState<Branch[]>([]);
 
-  // Cargar sucursales para el filtro
+  // Cargar sucursales para el filtro y control
   useEffect(() => {
-    supabaseApi.getBranches().then(setBranches);
+    loadBranches();
   }, []);
+
+  const loadBranches = () => {
+     supabaseApi.getBranches().then(setBranches);
+  };
+
+  const handleStatusChange = async (branchId: string, status: BranchStatus) => {
+    const branchName = branches.find(b => b.id === branchId)?.nombre;
+    const toastId = toast.loading(`Actualizando ${branchName}...`);
+    
+    await supabaseApi.updateBranchStatus(branchId, status);
+    await loadBranches(); // Reload local state
+    
+    toast.dismiss(toastId);
+    toast.success(`Estado de ${branchName} actualizado`);
+  };
 
   // LÓGICA DE FILTRADO
   const filteredBookings = useMemo(() => {
@@ -79,7 +95,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ bookings, loading 
   if (loading) return <div className="text-white/50 animate-pulse">Cargando métricas...</div>;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-10">
       
       {/* TOOLBAR DE FILTROS */}
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center bg-[#121212] p-2 rounded-2xl border border-white/5 inline-block w-full md:w-auto">
@@ -146,7 +162,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ bookings, loading 
         />
         <KpiCard 
             title="Mejor Sucursal" 
-            value={Object.entries(stats.revenueByBranch).sort((a,b) => b[1] - a[1])[0]?.[0] || '-'} 
+            value={Object.entries(stats.revenueByBranch).sort((a: [string, number], b: [string, number]) => b[1] - a[1])[0]?.[0] || '-'} 
             icon={<MapPin className="w-5 h-5 text-purple-400" />}
         />
       </div>
@@ -161,7 +177,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ bookings, loading 
             {Object.keys(stats.barberRevenue).length > 0 ? (
                 <div className="space-y-5">
                     {Object.entries(stats.barberRevenue)
-                        .sort((a,b) => b[1] - a[1])
+                        .sort((a: [string, number], b: [string, number]) => b[1] - a[1])
                         .map(([name, revenue], index) => (
                         <div key={name}>
                             <div className="flex justify-between text-sm mb-2">
@@ -197,7 +213,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ bookings, loading 
             {Object.keys(stats.serviceCounts).length > 0 ? (
                 <div className="space-y-4">
                     {Object.entries(stats.serviceCounts)
-                        .sort((a,b) => b[1] - a[1])
+                        .sort((a: [string, number], b: [string, number]) => b[1] - a[1])
                         .slice(0, 5) // Top 5
                         .map(([name, count], index) => (
                         <div key={name} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
@@ -221,6 +237,57 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ bookings, loading 
                     Sin datos para este periodo
                 </div>
             )}
+        </div>
+      </div>
+
+      {/* --- BRANCH CONTROL SECTION --- */}
+      <div className="bg-[#121212] border border-white/5 rounded-3xl p-6">
+        <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-amber-500" />
+            Control de Sucursales
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {branches.map(branch => (
+                <div key={branch.id} className="bg-black/40 border border-white/5 rounded-2xl p-4 flex flex-col justify-between">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 className="font-bold text-white">{branch.nombre}</h4>
+                            <p className="text-xs text-white/40">Horario auto: {branch.horario_apertura}:00 - {branch.horario_cierre}:00</p>
+                        </div>
+                        <div className={`px-2 py-1 rounded-md text-[10px] uppercase font-bold border 
+                             ${branch.estado_actual === 'abierto' ? 'bg-green-500/20 text-green-500 border-green-500/30' :
+                               branch.estado_actual === 'cerrado' ? 'bg-red-500/20 text-red-500 border-red-500/30' :
+                               'bg-blue-500/20 text-blue-500 border-blue-500/30'
+                             }`}>
+                            {branch.estado_actual === 'auto' ? 'Automático' : branch.estado_actual}
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                        <button 
+                            onClick={() => handleStatusChange(branch.id, 'auto')}
+                            className={`p-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${branch.estado_actual === 'auto' ? 'bg-white text-black' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'}`}
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            <span className="text-[10px] font-bold">Auto</span>
+                        </button>
+                        <button 
+                             onClick={() => handleStatusChange(branch.id, 'abierto')}
+                             className={`p-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${branch.estado_actual === 'abierto' ? 'bg-green-500 text-black' : 'bg-white/5 text-white/40 hover:bg-green-500/20 hover:text-green-500'}`}
+                        >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span className="text-[10px] font-bold">Abrir</span>
+                        </button>
+                        <button 
+                             onClick={() => handleStatusChange(branch.id, 'cerrado')}
+                             className={`p-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${branch.estado_actual === 'cerrado' ? 'bg-red-500 text-black' : 'bg-white/5 text-white/40 hover:bg-red-500/20 hover:text-red-500'}`}
+                        >
+                            <XCircle className="w-4 h-4" />
+                            <span className="text-[10px] font-bold">Cerrar</span>
+                        </button>
+                    </div>
+                </div>
+            ))}
         </div>
       </div>
     </div>

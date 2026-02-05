@@ -30,6 +30,9 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
   const [serviceId, setServiceId] = useState('');
   const [barberId, setBarberId] = useState('');
   const [status, setStatus] = useState<BookingStatus>(BookingStatus.PENDIENTE);
+  
+  // Local state for filtered barbers based on branch
+  const [availableBarbers, setAvailableBarbers] = useState<Barber[]>([]);
 
   useEffect(() => {
     if (booking && isOpen) {
@@ -41,8 +44,15 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
       setServiceId(booking.servicio.id);
       setBarberId(booking.barbero.id);
       setStatus(booking.estado);
+
+      // Filter barbers: Only show barbers that work at the booking's branch
+      // OR the barber currently assigned to the booking (in case they moved but booking remains)
+      const filtered = barbers.filter(b => 
+          b.sucursalId === booking.sucursal.id || b.id === booking.barbero.id
+      );
+      setAvailableBarbers(filtered);
     }
-  }, [booking, isOpen]);
+  }, [booking, isOpen, barbers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +109,9 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                             {booking.estado.replace('_', ' ')}
                         </span>
                     </div>
-                    <p className="text-xs text-white/50">Ticket: {booking.id.toUpperCase().slice(0,6)} • {booking.origen}</p>
+                    <p className="text-xs text-white/50">
+                        Ticket: {booking.id.toUpperCase().slice(0,6)} • {booking.sucursal.nombre}
+                    </p>
                 </div>
                 <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-white/50 hover:text-white">
                     <X className="w-5 h-5" />
@@ -136,7 +148,7 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                             </div>
                         </div>
 
-                        {/* Barber */}
+                        {/* Barber (Filtered by Branch) */}
                         <div className="space-y-2">
                             <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Barbero</label>
                             <div className="relative">
@@ -146,7 +158,9 @@ export const EditBookingModal: React.FC<EditBookingModalProps> = ({
                                     onChange={e => setBarberId(e.target.value)}
                                     className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-amber-500 focus:outline-none appearance-none text-sm"
                                 >
-                                    {barbers.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
+                                    {availableBarbers.map(b => (
+                                        <option key={b.id} value={b.id}>{b.nombre}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>

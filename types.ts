@@ -12,11 +12,16 @@ export enum BookingStatus {
   NO_SHOW = 'no_show'
 }
 
+export type BranchStatus = 'auto' | 'abierto' | 'cerrado';
+
 export interface Branch {
   id: string;
   nombre: string;
   direccion: string;
   mapa_url: string;
+  horario_apertura: number; // Hora militar (ej: 9)
+  horario_cierre: number;   // Hora militar (ej: 21)
+  estado_actual: BranchStatus;
 }
 
 export interface Barber {
@@ -25,6 +30,7 @@ export interface Barber {
   foto_url: string;
   bio_corta: string;
   activo: boolean;
+  sucursalId: string; // Link to Branch
 }
 
 export interface Service {

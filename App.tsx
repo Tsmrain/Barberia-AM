@@ -46,23 +46,42 @@ function App() {
 
   // Check URL param or hash for quick admin access (optional)
   React.useEffect(() => {
-    if (window.location.hash === '#admin') {
-        setIsAdminMode(true);
+    try {
+        if (window.location.hash === '#admin') {
+            setIsAdminMode(true);
+        }
+    } catch (e) {
+        console.warn('Unable to read location hash');
     }
   }, []);
+
+  const handleExitAdmin = () => {
+    setIsAuthenticated(false);
+    setIsAdminMode(false);
+    try {
+        // Attempt to clear hash safely
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        } else {
+            window.location.hash = '';
+        }
+    } catch (e) {
+        console.warn('Unable to clear location hash', e);
+    }
+  };
 
   if (isAdminMode) {
       if (isAuthenticated) {
           return (
               <>
-                <AdminPanel onLogout={() => { setIsAuthenticated(false); setIsAdminMode(false); window.location.hash = ''; }} />
+                <AdminPanel onLogout={handleExitAdmin} />
                 <Toaster position="top-right" theme="dark" />
               </>
           );
       }
       return (
         <>
-            <AdminLogin onLogin={() => setIsAuthenticated(true)} onBack={() => { setIsAdminMode(false); window.location.hash = ''; }} />
+            <AdminLogin onLogin={() => setIsAuthenticated(true)} onBack={handleExitAdmin} />
             <Toaster position="top-center" theme="dark" />
         </>
       );

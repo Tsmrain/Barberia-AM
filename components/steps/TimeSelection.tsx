@@ -62,6 +62,15 @@ export const TimeSelection: React.FC = () => {
 
     // Check if slot is taken logic
     const isTaken = takenSlots.includes(time);
+    const { isPast } = checkSlotAvailability(time);
+
+    if (isPast) {
+         toast.error('Este horario ya ha pasado', {
+            icon: <Ban className="w-5 h-5 text-red-400" />,
+            style: { background: 'rgba(20, 0, 0, 0.6)' }
+        });
+        return;
+    }
 
     if (isTaken) {
         // Feedback elegante de error
@@ -81,21 +90,40 @@ export const TimeSelection: React.FC = () => {
     setSelectedTimeSlot(time);
   };
 
+  const checkSlotAvailability = (time: string) => {
+      const isTaken = takenSlots.includes(time);
+      
+      // Check Past Time
+      const now = new Date();
+      const isToday = isSameDay(selectedDay, now);
+      let isPast = false;
+
+      if (isToday) {
+          const slotHour = parseInt(time.split(':')[0]);
+          const currentHour = now.getHours();
+          // If slot hour is strictly less than current hour, it's past.
+          // If slot hour equals current hour, technically the hour started, so it's past for a full appointment.
+          if (slotHour <= currentHour) {
+              isPast = true;
+          }
+      }
+      return { isTaken, isPast };
+  };
+
   const renderTimeSlot = (time: string) => {
-    const isTaken = takenSlots.includes(time);
+    const { isTaken, isPast } = checkSlotAvailability(time);
     const isSelected = selectedTimeSlot === time;
+    const isUnavailable = isTaken || isPast;
 
     return (
         <button
             key={time}
-            // Eliminamos el 'disabled' para permitir el click y mostrar el error
-            // disabled={isTaken || loadingSlots} 
             onClick={() => handleSlotClick(time)}
             className={`
                 relative py-3 rounded-xl text-xs font-medium border transition-all duration-200
                 ${loadingSlots ? 'opacity-50 cursor-wait' : ''}
-                ${isTaken 
-                    ? 'bg-white/5 border-white/5 text-white/20 decoration-white/20 line-through cursor-pointer hover:border-red-500/30' 
+                ${isUnavailable 
+                    ? 'bg-white/5 border-white/5 text-white/20 decoration-white/20 line-through cursor-pointer' 
                     : isSelected
                         ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-105'
                         : 'bg-white/5 border-white/10 text-white/80 hover:border-amber-500/50 hover:text-amber-500'

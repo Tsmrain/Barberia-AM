@@ -1,4 +1,4 @@
-import { Barber, Service, Client, ClientRanking, Branch, Booking, BookingStatus } from '../types';
+import { Barber, Service, Client, ClientRanking, Branch, Booking, BookingStatus, BranchStatus } from '../types';
 
 /**
  * MOCK DATABASE SERVICE
@@ -9,20 +9,26 @@ const MOCK_BRANCHES: Branch[] = [
     id: 'b1', 
     nombre: '4to Anillo', 
     direccion: 'Doble Vía La Guardia, 4to Anillo', 
-    mapa_url: 'https://maps.app.goo.gl/8ZKBwRkcTMpETbhj8' 
+    mapa_url: 'https://maps.app.goo.gl/8ZKBwRkcTMpETbhj8',
+    horario_apertura: 9,
+    horario_cierre: 21,
+    estado_actual: 'auto'
   },
   { 
     id: 'b2', 
     nombre: '6to Anillo', 
     direccion: 'Doble Vía La Guardia, 6to Anillo', 
-    mapa_url: 'https://maps.app.goo.gl/fabTd3WcxFJtjbMB7' 
+    mapa_url: 'https://maps.app.goo.gl/fabTd3WcxFJtjbMB7',
+    horario_apertura: 9,
+    horario_cierre: 21,
+    estado_actual: 'auto'
   }
 ];
 
 const MOCK_BARBERS: Barber[] = [
-  { id: '1', nombre: 'Andy', bio_corta: 'Master Barber', activo: true, foto_url: 'https://picsum.photos/200/200?random=1' },
-  { id: '2', nombre: 'Mateo', bio_corta: 'Fade Specialist', activo: true, foto_url: 'https://picsum.photos/200/200?random=2' },
-  { id: '3', nombre: 'Leo', bio_corta: 'Beard Expert', activo: true, foto_url: 'https://picsum.photos/200/200?random=3' },
+  { id: '1', nombre: 'Andy', bio_corta: 'Master Barber', activo: true, foto_url: 'https://picsum.photos/200/200?random=1', sucursalId: 'b1' },
+  { id: '2', nombre: 'Mateo', bio_corta: 'Fade Specialist', activo: true, foto_url: 'https://picsum.photos/200/200?random=2', sucursalId: 'b1' },
+  { id: '3', nombre: 'Leo', bio_corta: 'Beard Expert', activo: true, foto_url: 'https://picsum.photos/200/200?random=3', sucursalId: 'b2' },
 ];
 
 const MOCK_SERVICES: Service[] = [
@@ -79,7 +85,7 @@ const MOCK_BOOKINGS: Booking[] = [
     cliente: MOCK_CLIENTS['70055555'],
     barbero: MOCK_BARBERS[2], // Leo
     servicio: MOCK_SERVICES[2], // Barba (35bs)
-    sucursal: MOCK_BRANCHES[1],
+    sucursal: MOCK_BRANCHES[1], // 6to Anillo (Leo trabaja aquí)
     origen: 'guest'
   },
   {
@@ -89,7 +95,7 @@ const MOCK_BOOKINGS: Booking[] = [
     cliente: MOCK_CLIENTS['70011122'],
     barbero: MOCK_BARBERS[0], // Andy
     servicio: MOCK_SERVICES[7], // Premium (110bs)
-    sucursal: MOCK_BRANCHES[1],
+    sucursal: MOCK_BRANCHES[0], // 4to Anillo (Andy trabaja aquí)
     origen: 'guest'
   },
 ];
@@ -99,7 +105,15 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const supabaseApi = {
   getBranches: async (): Promise<Branch[]> => {
     await delay(300);
-    return MOCK_BRANCHES;
+    return [...MOCK_BRANCHES]; // Return copy to ensure reactivity if mutated elsewhere (though here we mutate constant)
+  },
+
+  updateBranchStatus: async (branchId: string, status: BranchStatus): Promise<void> => {
+    await delay(200);
+    const branch = MOCK_BRANCHES.find(b => b.id === branchId);
+    if (branch) {
+        branch.estado_actual = status;
+    }
   },
 
   getServices: async (): Promise<Service[]> => {
@@ -107,8 +121,11 @@ export const supabaseApi = {
     return MOCK_SERVICES;
   },
 
-  getBarbers: async (): Promise<Barber[]> => {
+  getBarbers: async (branchId?: string): Promise<Barber[]> => {
     await delay(300);
+    if (branchId) {
+        return MOCK_BARBERS.filter(b => b.sucursalId === branchId);
+    }
     return MOCK_BARBERS;
   },
 
@@ -131,9 +148,6 @@ export const supabaseApi = {
   createBooking: async (bookingData: any) => {
     await delay(800);
     
-    // Logica robusta para fecha
-    // Si viene del Admin (QuickBooking), 'date' ya es un objeto Date con la hora actual.
-    // Si viene del Cliente, 'date' es un objeto Date (solo dia) + 'time' string.
     let finalDate: Date;
     
     if (bookingData.time) {
@@ -141,7 +155,6 @@ export const supabaseApi = {
         finalDate = new Date(bookingData.date);
         finalDate.setHours(hours, minutes, 0, 0);
     } else {
-        // Asumimos que bookingData.date ya tiene la hora correcta (Walk-in)
         finalDate = new Date(bookingData.date);
     }
 
@@ -162,12 +175,34 @@ export const supabaseApi = {
 
   getTakenSlots: async (date: Date, barberId: string): Promise<string[]> => {
     await delay(400); 
-    const day = date.getDate();
-    if (day % 2 === 0) {
-        return ['10:00', '14:00', '16:00', '19:00'];
-    } else {
-        return ['09:00', '11:00', '15:00', '20:00'];
-    }
+    
+    // Filtramos las reservas existentes en MOCK_BOOKINGS para el barbero y fecha dados
+    const taken = MOCK_BOOKINGS
+      .filter(b => {
+        // 1. Mismo Barbero
+        if (b.barbero.id !== barberId) return false;
+        
+        // 2. Ignorar Cancelados
+        if (b.estado === BookingStatus.CANCELADO) return false;
+
+        // 3. Misma Fecha (Día, Mes, Año)
+        const bDate = new Date(b.fecha_hora);
+        const targetDate = new Date(date);
+        return (
+            bDate.getFullYear() === targetDate.getFullYear() &&
+            bDate.getMonth() === targetDate.getMonth() &&
+            bDate.getDate() === targetDate.getDate()
+        );
+      })
+      .map(b => {
+        // Convertir la hora de la reserva a formato "HH:mm"
+        const d = new Date(b.fecha_hora);
+        const hours = d.getHours().toString().padStart(2, '0');
+        const minutes = d.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+      });
+
+    return taken;
   },
 
   // --- ADMIN FUNCTIONS ---

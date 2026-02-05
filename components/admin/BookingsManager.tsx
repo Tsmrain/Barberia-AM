@@ -19,7 +19,8 @@ import {
   User,
   Scissors,
   Filter,
-  GripHorizontal
+  GripHorizontal,
+  Ban
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Booking, BookingStatus, Barber, Service } from '../../types';
@@ -98,16 +99,60 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
 
     if (!bookingId) return;
 
+    // 1. Get the booking object being dragged
+    const booking = bookings.find(b => b.id === bookingId);
+    if(!booking) return;
+
     // Calculate new Date object
     const newDate = new Date(targetDate);
     newDate.setHours(targetHour, 0, 0, 0);
 
+    // --- TIME GUARD: PREVENT PAST BOOKINGS ---
+    const now = new Date();
+    if (newDate < now) {
+        toast.error("Acción bloqueada", {
+            description: "No puedes mover una reserva al pasado.",
+            icon: <Ban className="w-5 h-5 text-red-500" />,
+            style: {
+                borderColor: 'rgba(239, 68, 68, 0.2)',
+                background: 'rgba(20, 0, 0, 0.6)'
+            }
+        });
+        return;
+    }
+
+    // --- CONFLICT GUARD: PREVENT DOUBLE BOOKING ---
+    // Verificar si ya existe una reserva para ESTE barbero en la fecha/hora destino
+    const isSlotTaken = bookings.some(b => {
+        // Ignoramos la reserva que estamos moviendo
+        if (b.id === bookingId) return false;
+        
+        // Ignoramos reservas canceladas
+        if (b.estado === BookingStatus.CANCELADO) return false;
+
+        // Debe ser el mismo barbero
+        if (b.barbero.id !== booking.barbero.id) return false;
+
+        // Verificamos colisión de fecha y hora exacta
+        return isSameDay(b.fecha_hora, newDate) && b.fecha_hora.getHours() === targetHour;
+    });
+
+    if (isSlotTaken) {
+         toast.error("Horario Ocupado", {
+            description: `El barbero ${booking.barbero.nombre} ya tiene una cita a las ${targetHour}:00.`,
+            icon: <Ban className="w-5 h-5 text-red-500" />,
+            style: {
+                borderColor: 'rgba(239, 68, 68, 0.2)',
+                background: 'rgba(20, 0, 0, 0.6)'
+            }
+        });
+        return;
+    }
+    // ----------------------------------------------
+
     // Optimistic Update / API Call
     const toastId = toast.loading('Reprogramando cita...');
     try {
-        const booking = bookings.find(b => b.id === bookingId);
-        if(!booking) throw new Error("Booking not found");
-
         await supabaseApi.updateBookingDetails(bookingId, {
             date: newDate,
             time: `${targetHour.toString().padStart(2, '0')}:00`,
@@ -215,6 +260,11 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
                             const slotBookings = getBookingsForSlot(day, hour);
                             const isToday = isSameDay(day, new Date());
                             
+                            // Check if this specific slot is in the past for visual cue (optional, but good for UX)
+                            const slotDate = new Date(day);
+                            slotDate.setHours(hour, 59, 0, 0); // End of the hour slot
+                            const isPast = slotDate < new Date();
+
                             return (
                                 <div 
                                     key={`${day.toISOString()}-${hour}`}
@@ -223,16 +273,23 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
                                     className={`
                                         flex-1 border-r border-white/5 last:border-r-0 p-1 relative transition-colors
                                         ${isToday ? 'bg-amber-500/[0.02]' : ''}
-                                        hover:bg-white/[0.02]
+                                        ${isPast ? 'bg-white/[0.01]' : 'hover:bg-white/[0.02]'}
                                     `}
                                 >
-                                    {/* Empty Slot Visual Hint (only on hover with drag logic conceptually, but CSS hover works for now) */}
-                                    {slotBookings.length === 0 && (
+                                    {/* Empty Slot Visual Hint */}
+                                    {slotBookings.length === 0 && !isPast && (
                                         <div className="w-full h-full rounded-lg border-2 border-dashed border-transparent hover:border-white/5 transition-all" />
+                                    )}
+                                    
+                                    {/* Visual indicator for past slots (optional subtle texture) */}
+                                    {isPast && slotBookings.length === 0 && (
+                                         <div className="w-full h-full opacity-30" 
+                                              style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '10px 10px' }} 
+                                         />
                                     )}
 
                                     {/* Render Bookings */}
-                                    <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-1 relative z-10">
                                         {slotBookings.map(booking => (
                                             <DraggableBookingCard 
                                                 key={booking.id} 
@@ -267,11 +324,13 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
 
 // --- SUB COMPONENTS ---
 
-const DraggableBookingCard = ({ booking, onDragStart, onClick }: { 
-    booking: Booking, 
-    onDragStart: (e: React.DragEvent, id: string) => void,
-    onClick: () => void 
-}) => {
+interface DraggableBookingCardProps {
+  booking: Booking;
+  onDragStart: (e: React.DragEvent, id: string) => void;
+  onClick: () => void;
+}
+
+const DraggableBookingCard: React.FC<DraggableBookingCardProps> = ({ booking, onDragStart, onClick }) => {
     const isCompleted = booking.estado === BookingStatus.COMPLETADO || booking.estado === BookingStatus.NO_SHOW;
     
     // Status Styles
