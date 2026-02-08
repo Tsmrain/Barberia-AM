@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Calendar, Clock, Scissors, User, Save, Loader2, Tag } from 'lucide-react';
 import { toast } from 'sonner';
-import { bookingService } from '../../lib/services';
-import type { Booking, Barber, Service, BookingStatus } from '../../lib/supabase/types';
-import { BOOKING_STATUS } from '../../lib/supabase/types';
+import { bookingService } from '@/lib/services';
+import type { Booking, Barber, Service, BookingStatus } from '@/lib/supabase/types';
+import { BOOKING_STATUS } from '@/lib/supabase/types';
 import { format } from 'date-fns';
 
 interface EditBookingModalProps {

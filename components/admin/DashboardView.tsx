@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import type { Booking, BookingStatus, Branch, BranchStatus } from '../../lib/supabase/types';
-import { BOOKING_STATUS } from '../../lib/supabase/types';
+import type { Booking, BookingStatus, Branch, BranchStatus } from '@/lib/supabase/types';
+import { BOOKING_STATUS } from '@/lib/supabase/types';
 import { TrendingUp, Users, MapPin, DollarSign, Clock, CheckCircle2, XCircle, ChevronDown, RefreshCw } from 'lucide-react';
 import { isSameDay, isSameWeek, isSameMonth } from 'date-fns';
-import { bookingService } from '../../lib/services';
+import { bookingService } from '@/lib/services';
 import { toast } from 'sonner';
 
 interface DashboardViewProps {

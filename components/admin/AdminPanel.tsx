@@ -3,9 +3,9 @@ import { motion } from 'framer-motion';
 import { LayoutDashboard, CalendarDays, LogOut, Scissors, UserPlus } from 'lucide-react';
 import { DashboardView } from './DashboardView';
 import { BookingsManager } from './BookingsManager';
-import { QuickBookingModal } from './QuickBookingModal'; // Import
-import type { Booking } from '../../lib/supabase/types';
-import { bookingService } from '../../lib/services';
+import { QuickBookingModal } from './QuickBookingModal';
+import type { Booking } from '@/lib/supabase/types';
+import { bookingService } from '@/lib/services';
 
 interface AdminPanelProps {
     onLogout: () => void;

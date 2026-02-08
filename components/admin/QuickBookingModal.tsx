@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, UserPlus, Scissors, Clock, CheckCircle2, User, Loader2, MapPin, Calendar, ChevronDown, Ban } from 'lucide-react';
 import { toast } from 'sonner';
-import { bookingService } from '../../lib/services';
-import type { Barber, Service, Client, BookingStatus, Branch } from '../../lib/supabase/types';
-import { BOOKING_STATUS } from '../../lib/supabase/types';
+import { bookingService } from '@/lib/services';
+import type { Barber, Service, Client, BookingStatus, Branch } from '@/lib/supabase/types';
+import { BOOKING_STATUS } from '@/lib/supabase/types';
 
 interface QuickBookingModalProps {
     isOpen: boolean;

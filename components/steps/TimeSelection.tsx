@@ -5,7 +5,7 @@ import { format, addDays, isSameDay, startOfToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useBooking } from '../../store/BookingContext';
-import { bookingService } from '../../lib/services';
+import { bookingService } from '@/lib/services';
 
 export const TimeSelection: React.FC = () => {
   const { setStep, setDate, setTime, selectedBarber } = useBooking();

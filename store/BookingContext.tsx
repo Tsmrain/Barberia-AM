@@ -1,3 +1,5 @@
+'use client';
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Barber, Service, Client, Branch } from '../types';
 
@@ -36,7 +38,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
   // 5: Identity
   // 6: Confirmation
   // 7: Success
-  const [step, setStep] = useState(0); 
+  const [step, setStep] = useState(0);
   const [selectedBranch, setBranchState] = useState<Branch | null>(null);
   const [selectedService, setServiceState] = useState<Service | null>(null);
   const [selectedBarber, setBarberState] = useState<Barber | null>(null);

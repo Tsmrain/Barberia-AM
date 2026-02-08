@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Clock } from 'lucide-react';
 import { useBooking } from '../../store/BookingContext';
-import { bookingService } from '../../lib/services';
-import type { Service } from '../../lib/supabase/types';
+import { bookingService } from '@/lib/services';
+import type { Service } from '@/lib/supabase/types';
 
 export const ServiceSelection: React.FC = () => {
   const { setStep, setService, selectedBranch } = useBooking();

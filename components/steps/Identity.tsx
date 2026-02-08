@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
 import { useBooking } from '../../store/BookingContext';
-import { bookingService } from '../../lib/services';
-import type { Client } from '../../lib/supabase/types';
+import { bookingService } from '@/lib/services';
+import type { Client } from '@/lib/supabase/types';
 
 // Lista de países soportados
 const COUNTRIES = [
