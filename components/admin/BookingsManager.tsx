@@ -24,9 +24,10 @@ import {
     MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Booking, BookingStatus, Barber, Service, Branch } from '../../lib/supabase/types';
-import { BOOKING_STATUS } from '../../lib/supabase/types';
-import { bookingService } from '../../lib/services';
+import Image from 'next/image';
+import type { Booking, BookingStatus, Barber, Service, Branch } from '@/lib/supabase/types';
+import { BOOKING_STATUS } from '@/lib/supabase/types';
+import { bookingService } from '@/lib/services';
 import { EditBookingModal } from './EditBookingModal';
 
 interface BookingsManagerProps {
@@ -258,9 +259,12 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
                                 ))}
                         </select>
                         {selectedBarberId !== 'all' && (
-                            <img
-                                src={barbers.find(b => b.id === selectedBarberId)?.foto_url}
+                            <Image
+                                src={barbers.find(b => b.id === selectedBarberId)?.foto_url || ''}
+                                width={24}
+                                height={24}
                                 className="w-6 h-6 rounded-full border border-white/10"
+                                alt="Barber"
                             />
                         )}
                     </div>

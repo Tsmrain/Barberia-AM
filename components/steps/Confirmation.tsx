@@ -3,8 +3,9 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, Calendar, Clock, MapPin, Scissors, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useBooking } from '../../store/BookingContext';
-import { bookingService } from '../../lib/services';
+import Image from 'next/image';
+import { useBooking } from '@/store/BookingContext';
+import { bookingService } from '@/lib/services';
 
 export const Confirmation: React.FC = () => {
   const { setStep, selectedService, selectedBarber, selectedDate, selectedTime, selectedBranch, client } = useBooking();
@@ -71,7 +72,7 @@ export const Confirmation: React.FC = () => {
             <div>
               <p className="text-xs text-black/50 uppercase tracking-wider mb-1">Barbero</p>
               <div className="flex items-center space-x-2">
-                <img src={selectedBarber.foto_url} className="w-8 h-8 rounded-full object-cover" alt="" />
+                <Image src={selectedBarber.foto_url} width={32} height={32} className="w-8 h-8 rounded-full object-cover" alt={selectedBarber.nombre} />
                 <span className="font-semibold">{selectedBarber.nombre}</span>
               </div>
             </div>

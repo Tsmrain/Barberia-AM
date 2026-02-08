@@ -1,8 +1,9 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Next.js environment variables (prefix: NEXT_PUBLIC_ for client-side access)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Supabase credentials not configured. Using mock mode.');
@@ -15,7 +16,7 @@ export function getSupabaseClient(): SupabaseClient<Database> | null {
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
   }
-  
+
   if (!clientInstance) {
     clientInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
       auth: {
@@ -23,7 +24,7 @@ export function getSupabaseClient(): SupabaseClient<Database> | null {
       },
     });
   }
-  
+
   return clientInstance;
 }
 

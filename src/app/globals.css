@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   Variables de Diseño Premium - Barbería Andy
+   ============================================ */
+:root {
+  --background: #0a0a0a;
+  --foreground: #ffffff;
+  --accent: #f59e0b; /* amber-500 */
+  --accent-hover: #fbbf24; /* amber-400 */
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   Estilos Base
+   ============================================ */
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   Tipografía Serif para títulos
+   ============================================ */
+.font-serif {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* ============================================
+   Utilidades Personalizadas
+   ============================================ */
+
+/* Ocultar scrollbar manteniendo funcionalidad */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glassmorphism base */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Glow effects */
+.glow-amber {
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
+}
+
+.glow-white {
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.4);
+}
+
+/* ============================================
+   Animaciones
+   ============================================ */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(245, 158, 11, 0.6);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ============================================
+   Focus States Accesibles
+   ============================================ */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   Selection Styling
+   ============================================ */
+::selection {
+  background-color: var(--accent);
+  color: var(--background);
+}

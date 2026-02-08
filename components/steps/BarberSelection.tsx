@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
-import { useBooking } from '../../store/BookingContext';
-import { bookingService } from '../../lib/services';
-import type { Barber } from '../../lib/supabase/types';
+import Image from 'next/image';
+import { useBooking } from '@/store/BookingContext';
+import { bookingService } from '@/lib/services';
+import type { Barber } from '@/lib/supabase/types';
 
 export const BarberSelection: React.FC = () => {
   const { setStep, setBarber, selectedService, selectedBranch } = useBooking();
@@ -59,9 +60,11 @@ export const BarberSelection: React.FC = () => {
               {/* Circular Image Container */}
               <div className="relative mb-4">
                 <div className="w-24 h-24 rounded-full p-1 border-2 border-white/10 group-hover:border-amber-500/50 transition-colors">
-                  <img
+                  <Image
                     src={barber.foto_url}
                     alt={barber.nombre}
+                    width={96}
+                    height={96}
                     className="w-full h-full rounded-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
                   />
                 </div>
