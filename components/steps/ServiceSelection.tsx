@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Clock } from 'lucide-react';
 import { useBooking } from '../../store/BookingContext';
-import { supabaseApi } from '../../lib/mockSupabase';
+import { supabaseApi } from '../../lib/supabaseApi';
 import { Service } from '../../types';
 
 export const ServiceSelection: React.FC = () => {

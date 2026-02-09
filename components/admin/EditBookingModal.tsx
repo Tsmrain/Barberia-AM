@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Calendar, Clock, Scissors, User, Save, Loader2, Tag, MapPin, Copy } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabaseApi } from '../../lib/mockSupabase';
+import { supabaseApi } from '../../lib/supabaseApi';
 import { Booking, Barber, Service, BookingStatus, Branch } from '../../types';
 import { format } from 'date-fns';
 

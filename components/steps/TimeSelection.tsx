@@ -7,7 +7,7 @@ import { format, addDays, isSameDay, startOfToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useBooking } from '../../store/BookingContext';
-import { supabaseApi } from '../../lib/mockSupabase';
+import { supabaseApi } from '../../lib/supabaseApi';
 
 export const TimeSelection: React.FC = () => {
   const { setStep, setDate, setTime, selectedBarber } = useBooking();

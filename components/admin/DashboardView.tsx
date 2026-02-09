@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Booking, BookingStatus, Branch } from '../../types';
 import { TrendingUp, Users, MapPin, DollarSign, ChevronDown } from 'lucide-react';
 import { isSameDay, isSameWeek, isSameMonth } from 'date-fns';
-import { supabaseApi } from '../../lib/mockSupabase';
+import { supabaseApi } from '../../lib/supabaseApi';
 import { toast } from 'sonner';
 
 interface DashboardViewProps {

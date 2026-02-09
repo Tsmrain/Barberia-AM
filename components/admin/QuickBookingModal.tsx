@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, UserPlus, Scissors, Clock, CheckCircle2, User, Loader2, MapPin, Calendar, ChevronDown, Ban } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabaseApi } from '../../lib/mockSupabase';
+import { supabaseApi } from '../../lib/supabaseApi';
 import { Barber, Service, Client, BookingStatus, Branch } from '../../types';
 
 interface QuickBookingModalProps {

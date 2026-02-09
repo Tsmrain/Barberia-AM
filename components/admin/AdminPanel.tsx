@@ -8,7 +8,7 @@ import { BookingsManager } from './BookingsManager';
 import { BranchManager } from './BranchManager';
 import { QuickBookingModal } from './QuickBookingModal'; // Import
 import { Booking } from '../../types';
-import { supabaseApi } from '../../lib/mockSupabase';
+import { supabaseApi } from '../../lib/supabaseApi';
 
 interface AdminPanelProps {
     onLogout: () => void;

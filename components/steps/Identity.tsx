@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
 import { useBooking } from '../../store/BookingContext';
-import { supabaseApi } from '../../lib/mockSupabase';
+import { supabaseApi } from '../../lib/supabaseApi';
 import { Client } from '../../types';
 
 // Lista de países soportados

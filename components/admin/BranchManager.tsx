@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Branch, BranchStatus } from '../../types';
 import { Clock, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
-import { supabaseApi } from '../../lib/mockSupabase';
+import { supabaseApi } from '../../lib/supabaseApi';
 import { toast } from 'sonner';
 
 export const BranchManager: React.FC = () => {

@@ -23,4 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 progit.pdf
-node_modules
+.next/
+.env*
+node_modules/

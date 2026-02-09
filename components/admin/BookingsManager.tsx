@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Booking, BookingStatus, Barber, Service, Branch } from '../../types';
-import { supabaseApi } from '../../lib/mockSupabase';
+import { supabaseApi } from '../../lib/supabaseApi';
 import { EditBookingModal } from './EditBookingModal';
 
 interface BookingsManagerProps {
