@@ -25,14 +25,15 @@ export const Hero: React.FC = () => {
             Optimized Logo 
             priority={true} is crucial for LCP (Largest Contentful Paint) score 
         */}
-        <div className="relative w-[220px] md:w-[280px] h-[180px]">
+        <div className="relative w-[180px] md:w-[240px] h-[180px]">
           <Image
             src="/logo.png"
             alt="Barber Club Logo"
             fill
             className="object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] opacity-100"
             priority
-            sizes="(max-width: 768px) 220px, 280px"
+            sizes="(max-width: 768px) 180px, 240px"
+            quality={85}
           />
         </div>
 

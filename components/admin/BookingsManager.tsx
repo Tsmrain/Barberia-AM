@@ -14,6 +14,7 @@ import {
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import {
     ChevronLeft,
     ChevronRight,
@@ -34,13 +35,15 @@ interface BookingsManagerProps {
     bookings: Booking[];
     loading: boolean;
     onRefresh: () => void;
+    currentDate: Date;
+    onDateChange: (date: Date) => void;
 }
 
 // Horas de operación (09:00 - 21:00)
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 9);
 
-export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, loading, onRefresh }) => {
-    const [currentDate, setCurrentDate] = useState<Date>(new Date());
+export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, loading, onRefresh, currentDate, onDateChange }) => {
+    // const [currentDate, setCurrentDate] = useState<Date>(new Date()); // REPLACED BY PROPS
     const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -70,9 +73,9 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
     }, []);
 
     // Navigation Logic
-    const handlePrevWeek = () => setCurrentDate(prev => subWeeks(prev, 1));
-    const handleNextWeek = () => setCurrentDate(prev => addWeeks(prev, 1));
-    const handleToday = () => setCurrentDate(new Date());
+    const handlePrevWeek = () => onDateChange(subWeeks(currentDate, 1));
+    const handleNextWeek = () => onDateChange(addWeeks(currentDate, 1));
+    const handleToday = () => onDateChange(new Date());
 
     // Generate Week Days (Monday to Friday)
     const weekDays = useMemo(() => {
@@ -261,9 +264,12 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
                                 ))}
                         </select>
                         {selectedBarberId !== 'all' && (
-                            <img
-                                src={barbers.find(b => b.id === selectedBarberId)?.foto_url}
-                                className="w-6 h-6 rounded-full border border-white/10"
+                            <Image
+                                src={barbers.find(b => b.id === selectedBarberId)?.foto_url || ''}
+                                alt="Barber"
+                                width={24}
+                                height={24}
+                                className="rounded-full border border-white/10 object-cover"
                             />
                         )}
                     </div>

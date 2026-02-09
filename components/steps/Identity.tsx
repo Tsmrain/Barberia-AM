@@ -82,6 +82,28 @@ export const Identity: React.FC = () => {
     return () => clearTimeout(timer);
   }, [phone, selectedCountry, setClient, isEditingProfile]);
 
+  // Debounce Name Search for New Users
+  useEffect(() => {
+    if (!isNewUser || !name || name.length <= 3) {
+      setPossibleMatches([]);
+      return;
+    }
+
+    const searchMatches = async () => {
+      try {
+        const matches = await supabaseApi.searchClientsByName(name);
+        const fullPhone = `${selectedCountry.code}${phone}`;
+        const others = matches.filter(m => m.celular !== fullPhone);
+        setPossibleMatches(others);
+      } catch (e) {
+        console.error("Error searching clients", e);
+      }
+    };
+
+    const timer = setTimeout(searchMatches, 600);
+    return () => clearTimeout(timer);
+  }, [name, isNewUser, phone, selectedCountry]);
+
   const handleUpdateProfile = async () => {
     if (!client) return;
 
@@ -332,16 +354,6 @@ export const Identity: React.FC = () => {
                     value={name}
                     onChange={(e) => {
                       setName(e.target.value);
-                      // Search for existing clients with same name but different phone
-                      if (e.target.value.length > 3) {
-                        supabaseApi.searchClientsByName(e.target.value).then(matches => {
-                          // Exclude current entered phone (obviously)
-                          const others = matches.filter(m => m.celular !== `${selectedCountry.code}${phone}`);
-                          setPossibleMatches(others);
-                        });
-                      } else {
-                        setPossibleMatches([]);
-                      }
                     }}
                     placeholder="Tu Nombre Completo"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-center text-lg focus:outline-none focus:border-amber-500 transition-all"

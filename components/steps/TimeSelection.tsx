@@ -28,10 +28,23 @@ export const TimeSelection: React.FC = () => {
     '17:00', '18:00', '19:00', '20:00', '21:00'
   ];
 
+  // Cache for slots: key = "YYYY-MM-DD_BARBER_ID", value = { slots: string[], timestamp: number }
+  const slotsCache = React.useRef<Record<string, { slots: string[], timestamp: number }>>({});
+
   // Fetch availability when date or barber changes
   useEffect(() => {
     const fetchAvailability = async () => {
       if (!selectedBarber) return;
+
+      const cacheKey = `${format(selectedDay, 'yyyy-MM-dd')}_${selectedBarber.id}`;
+      const cached = slotsCache.current[cacheKey];
+
+      // Use cache if less than 60 seconds old to respect real-time-ish nature but save excessive clicks
+      if (cached && (Date.now() - cached.timestamp < 60000)) {
+        console.log("Using cached slots"); // Debug
+        setTakenSlots(cached.slots);
+        return;
+      }
 
       setLoadingSlots(true);
       setTakenSlots([]); // Reset visuals while loading
@@ -39,6 +52,13 @@ export const TimeSelection: React.FC = () => {
 
       try {
         const taken = await supabaseApi.getTakenSlots(selectedDay, selectedBarber.id);
+
+        // Save to cache
+        slotsCache.current[cacheKey] = {
+          slots: taken,
+          timestamp: Date.now()
+        };
+
         setTakenSlots(taken);
       } catch (error) {
         console.error("Failed to fetch slots", error);
@@ -171,8 +191,8 @@ export const TimeSelection: React.FC = () => {
                 key={day.toISOString()}
                 onClick={() => setSelectedDay(day)}
                 className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-2xl border transition-all duration-200 ${isSelected
-                    ? 'bg-amber-500 border-amber-500 text-black shadow-lg shadow-amber-500/20'
-                    : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
+                  ? 'bg-amber-500 border-amber-500 text-black shadow-lg shadow-amber-500/20'
+                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
                   }`}
               >
                 <span className="text-xs font-medium uppercase">{format(day, 'EEE', { locale: es })}</span>
@@ -206,8 +226,8 @@ export const TimeSelection: React.FC = () => {
           onClick={handleConfirm}
           disabled={!selectedTimeSlot}
           className={`w-full py-4 rounded-full font-bold text-lg transition-all duration-300 ${selectedTimeSlot
-              ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]'
-              : 'bg-white/10 text-white/20 cursor-not-allowed'
+            ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+            : 'bg-white/10 text-white/20 cursor-not-allowed'
             }`}
         >
           Continuar

@@ -1,20 +1,41 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Barber Club App (Next.js + Supabase)
 
-# Run and deploy your AI Studio app
+Aplicación de reservas para barbería, optimizada para rendimiento y costos (Supabase Free Tier).
 
-This contains everything you need to run your app locally.
+## 🗂 Estructura del Proyecto
 
-View your app in AI Studio: https://ai.studio/apps/drive/1EiuC8U_OITuyUwkYZnklt9yjKPZMl_qr
+El código sigue una arquitectura modular y limpia:
 
-## Run Locally
+-   **/database**: Scripts SQL críticos para inicializar y optimizar la base de datos.
+-   **/lib/services**: Lógica de negocio separada por dominios (`booking`, `catalog`, `client`).
+-   **/components**: Componentes de UI reutilizables.
+-   **/app**: Rutas y páginas de Next.js (App Router).
 
-**Prerequisites:**  Node.js
+## 🚀 Configuración Inicial (Base de Datos)
 
+Si acabas de crear un proyecto nuevo en Supabase (ej. en `sa-east-1`):
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1.  Ve a la carpeta `database/`.
+2.  Sigue las instrucciones en `database/README.md`.
+    -   Ejecuta primero `01_tablas_y_datos.sql`.
+    -   Ejecuta después `02_indices_optimizacion.sql`.
+
+## 🛠 Ejecutar Localmente
+
+1.  Instalar dependencias:
+    ```bash
+    npm install
+    ```
+2.  Configurar variables de entorno en `.env.local`:
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=tu_url_de_supabase
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
+    ```
+3.  Correr la aplicación:
+    ```bash
+    npm run dev
+    ```
+
+## ☁️ Despliegue en Vercel
+
+Lee la guía detallada en `VERCEL_DEPLOYMENT_GUIDE.md` para desplegar con coste cero y máxima velocidad.

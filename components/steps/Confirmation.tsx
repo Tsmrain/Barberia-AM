@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Calendar, Clock, MapPin, Scissors, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useBooking } from '../../store/BookingContext';
@@ -82,7 +83,15 @@ export const Confirmation: React.FC = () => {
             <div>
               <p className="text-xs text-black/50 uppercase tracking-wider mb-1">Barbero</p>
               <div className="flex items-center space-x-2">
-                <img src={selectedBarber.foto_url} className="w-8 h-8 rounded-full object-cover" alt="" />
+                <div className="w-8 h-8 rounded-full overflow-hidden relative">
+                  <Image
+                    src={selectedBarber.foto_url}
+                    alt={selectedBarber.nombre}
+                    fill
+                    sizes="32px"
+                    className="object-cover"
+                  />
+                </div>
                 <span className="font-semibold">{selectedBarber.nombre}</span>
               </div>
             </div>

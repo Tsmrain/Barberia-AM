@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, CalendarDays, LogOut, Scissors, UserPlus, Store } from 'lucide-react';
+import { startOfWeek, endOfWeek, subWeeks, addWeeks } from 'date-fns';
 
 import { BookingsManager } from './BookingsManager';
 import { BranchManager } from './BranchManager';
@@ -18,19 +19,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     const [activeTab, setActiveTab] = useState<'bookings' | 'branches'>('bookings');
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isQuickModalOpen, setIsQuickModalOpen] = useState(false); // State for modal
+    const [isQuickModalOpen, setIsQuickModalOpen] = useState(false);
 
-    // Cargar datos globales para el admin
+    // Lifted State for BookingsManager
+    const [currentDate, setCurrentDate] = useState<Date>(new Date());
+
+    // Cargar datos (Windowed Fetching: +/- 2 weeks from current date)
     const refreshData = async () => {
         setLoading(true);
-        const data = await supabaseApi.getAllBookings();
-        setBookings(data);
-        setLoading(false);
+        try {
+            // Fetch a 4-week window to allow smooth navigation without constant fetching
+            const start = subWeeks(startOfWeek(currentDate), 1);
+            const end = addWeeks(endOfWeek(currentDate), 2);
+
+            const data = await supabaseApi.getBookings(start, end);
+            setBookings(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
     };
 
+    // Refetch when date changes significantly? 
+    // Actually simpler: just re-fetch whenever currentDate changes.
     useEffect(() => {
         refreshData();
-    }, []);
+    }, [currentDate]);
 
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans flex flex-col md:flex-row">
@@ -116,7 +131,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                     >
-                        {activeTab === 'bookings' && <BookingsManager bookings={bookings} loading={loading} onRefresh={refreshData} />}
+                        {activeTab === 'bookings' && (
+                            <BookingsManager
+                                bookings={bookings}
+                                loading={loading}
+                                onRefresh={refreshData}
+                                currentDate={currentDate}
+                                onDateChange={setCurrentDate}
+                            />
+                        )}
                         {activeTab === 'branches' && <BranchManager />}
                     </motion.div>
                 </div>
