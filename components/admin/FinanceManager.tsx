@@ -30,7 +30,6 @@ export const FinanceManager: React.FC = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [allTimeDebt, setAllTimeDebt] = useState(0);
-    const [allTimeRevenue, setAllTimeRevenue] = useState(0); // New State
     const [loading, setLoading] = useState(true);
 
     // Fetch data when month changes
@@ -67,7 +66,6 @@ export const FinanceManager: React.FC = () => {
 
                 // Calculate Total Accumulated Debt (3%)
                 const totalRevenueAllTime = validAllTime.reduce((acc, curr) => acc + curr.servicio.precio, 0);
-                setAllTimeRevenue(totalRevenueAllTime); // Set Revenue
                 setAllTimeDebt(totalRevenueAllTime * 0.03);
 
             } catch (error) {
