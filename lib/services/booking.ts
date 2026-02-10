@@ -89,11 +89,23 @@ export const bookingService = {
             fecha_hora: new Date(b.fecha_hora),
             estado: b.estado,
             origen: b.origen,
+            comision_pagada: b.comision_pagada, // Map new field
             cliente: b.cliente,
             barbero: { ...b.barbero, sucursalId: b.barbero?.sucursal_id },
             servicio: b.servicio,
             sucursal: b.sucursal
         }));
+    },
+
+    markBookingsAsPaid: async (ids: string[]): Promise<void> => {
+        if (ids.length === 0) return;
+
+        const { error } = await supabase
+            .from('reservas')
+            .update({ comision_pagada: true })
+            .in('id', ids);
+
+        if (error) throw error;
     },
 
     updateBookingStatus: async (id: string, status: BookingStatus): Promise<void> => {

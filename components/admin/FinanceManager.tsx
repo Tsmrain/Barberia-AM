@@ -11,8 +11,10 @@ import {
     Download,
     Loader2,
     Percent,
-    CreditCard
+    CreditCard,
+    CheckCircle2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
     format,
     startOfMonth,
@@ -32,45 +34,70 @@ export const FinanceManager: React.FC = () => {
     const [allTimeDebt, setAllTimeDebt] = useState(0);
     const [loading, setLoading] = useState(true);
 
+    // Payment Logic State
+    const [unpaidBookings, setUnpaidBookings] = useState<Booking[]>([]);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+    const fetchFinancialData = async () => {
+        setLoading(true);
+        try {
+            // 1. Monthly Data
+            const start = startOfMonth(currentMonth);
+            const end = endOfMonth(currentMonth);
+
+            // 2. All Time Data (For Total Debt Calculation)
+            const allTimeStart = new Date('2024-01-01');
+            const allTimeEnd = new Date('2030-12-31');
+
+            const [monthData, allTimeData] = await Promise.all([
+                supabaseApi.getBookings(start, end),
+                supabaseApi.getBookings(allTimeStart, allTimeEnd)
+            ]);
+
+            // Filter valid bookings for monthly list (optional, but consistent)
+            setBookings(monthData);
+
+            // Calculate Total Accumulated Debt (3%) 
+            // ONLY COUNT UNPAID BOOKINGS
+            const unpaid = allTimeData.filter(b => !b.comision_pagada);
+            setUnpaidBookings(unpaid);
+
+            const totalRevenueUnpaid = unpaid.reduce((acc, curr) => acc + curr.servicio.precio, 0);
+            setAllTimeDebt(totalRevenueUnpaid * 0.03);
+
+        } catch (error) {
+            console.error("Error fetching financial data:", error);
+            toast.error("Error cargando finanzas");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Fetch data when month changes
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // 1. Monthly Data
-                const start = startOfMonth(currentMonth);
-                const end = endOfMonth(currentMonth);
-
-                // 2. All Time Data (For Total Debt Calculation)
-                // We fetch a wide range to get "All Time"
-                const allTimeStart = new Date('2024-01-01');
-                const allTimeEnd = new Date('2030-12-31');
-
-                const [monthData, allTimeData] = await Promise.all([
-                    supabaseApi.getBookings(start, end),
-                    supabaseApi.getBookings(allTimeStart, allTimeEnd)
-                ]);
-
-                // Filter valid bookings for monthly list (optional, maybe keep this clean for the list?)
-                // User only specified the debt calculation logic.
-                const validMonth = monthData; // Showing all in list too for consistency
-
-                // Calculate Total Accumulated Debt (3%) based on ALL bookings
-                // User Request: "no importa el estado de la reserva igual lo cuentas"
-                const totalRevenueAllTime = allTimeData.reduce((acc, curr) => acc + curr.servicio.precio, 0);
-                setAllTimeDebt(totalRevenueAllTime * 0.03);
-
-                setBookings(validMonth);
-
-            } catch (error) {
-                console.error("Error fetching financial data:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
+        fetchFinancialData();
     }, [currentMonth]);
+
+    const handleMarkAsPaid = async () => {
+        if (!confirm(`¿Confirmas que recibiste el pago de ${allTimeDebt.toLocaleString('es-BO')} Bs? Esto reiniciará la deuda a 0.`)) {
+            return;
+        }
+
+        setIsProcessingPayment(true);
+        try {
+            const idsToPay = unpaidBookings.map(b => b.id);
+            if (idsToPay.length > 0) {
+                await supabaseApi.markBookingsAsPaid(idsToPay);
+                toast.success("Pago registrado exitosamente");
+                await fetchFinancialData(); // Refresh to clear debt
+            }
+        } catch (error) {
+            console.error("Payment error:", error);
+            toast.error("Error al registrar pago");
+        } finally {
+            setIsProcessingPayment(false);
+        }
+    };
 
     // Monthly Calculations
     const stats = useMemo(() => {
@@ -147,6 +174,17 @@ export const FinanceManager: React.FC = () => {
                                 <span className="text-xs text-red-400 font-bold uppercase tracking-widest mt-1 bg-red-500/10 px-2 py-1 rounded">
                                     Pendiente de Pago
                                 </span>
+
+                                {allTimeDebt > 0 && (
+                                    <button
+                                        onClick={handleMarkAsPaid}
+                                        disabled={isProcessingPayment}
+                                        className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg shadow-lg shadow-green-900/20 transition-all flex items-center gap-2"
+                                    >
+                                        {isProcessingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                        MARCAR COMO PAGADO
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

@@ -56,4 +56,5 @@ export interface Booking {
   servicio: Service;
   sucursal: Branch;
   origen: 'guest' | 'google' | 'walkin' | 'admin';
+  comision_pagada?: boolean; // New field for payment tracking
 }

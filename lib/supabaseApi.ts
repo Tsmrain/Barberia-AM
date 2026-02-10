@@ -41,6 +41,7 @@ export const supabaseApi = {
     getBookings: bookingService.getBookings,
     updateBookingStatus: bookingService.updateBookingStatus,
     updateBookingDetails: bookingService.updateBookingDetails,
+    markBookingsAsPaid: bookingService.markBookingsAsPaid, // Add this
     deleteBooking: bookingService.deleteBooking,
     subscribeToBookings: bookingService.subscribeToBookings
 };
