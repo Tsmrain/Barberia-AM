@@ -29,6 +29,7 @@ import { Booking, BookingStatus } from '../../types';
 export const FinanceManager: React.FC = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [allTimeDebt, setAllTimeDebt] = useState(0);
     const [loading, setLoading] = useState(true);
 
     // Fetch data when month changes
@@ -36,17 +37,37 @@ export const FinanceManager: React.FC = () => {
         const fetchData = async () => {
             setLoading(true);
             try {
+                // 1. Monthly Data
                 const start = startOfMonth(currentMonth);
                 const end = endOfMonth(currentMonth);
-                const data = await supabaseApi.getBookings(start, end);
 
-                // Filter only valid bookings for financial stats
-                const validBookings = data.filter(b =>
+                // 2. All Time Data (For Total Debt Calculation)
+                // We fetch a wide range to get "All Time"
+                const allTimeStart = new Date('2024-01-01');
+                const allTimeEnd = new Date('2030-12-31');
+
+                const [monthData, allTimeData] = await Promise.all([
+                    supabaseApi.getBookings(start, end),
+                    supabaseApi.getBookings(allTimeStart, allTimeEnd)
+                ]);
+
+                // Filter valid bookings
+                const validMonth = monthData.filter(b =>
                     b.estado === BookingStatus.CONFIRMADO ||
                     b.estado === BookingStatus.COMPLETADO
                 );
 
-                setBookings(validBookings);
+                const validAllTime = allTimeData.filter(b =>
+                    b.estado === BookingStatus.CONFIRMADO ||
+                    b.estado === BookingStatus.COMPLETADO
+                );
+
+                setBookings(validMonth);
+
+                // Calculate Total Accumulated Debt (3%)
+                const totalRevenueAllTime = validAllTime.reduce((acc, curr) => acc + curr.servicio.precio, 0);
+                setAllTimeDebt(totalRevenueAllTime * 0.03);
+
             } catch (error) {
                 console.error("Error fetching financial data:", error);
             } finally {
@@ -57,7 +78,7 @@ export const FinanceManager: React.FC = () => {
         fetchData();
     }, [currentMonth]);
 
-    // Calculations
+    // Monthly Calculations
     const stats = useMemo(() => {
         const totalRevenue = bookings.reduce((acc, curr) => acc + curr.servicio.precio, 0);
         const commissionRate = 0.03; // 3%
@@ -106,7 +127,39 @@ export const FinanceManager: React.FC = () => {
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar">
 
-                {/* Stats Grid */}
+                {/* GLOBAL DEBT ALERT */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-red-900/40 to-black border border-red-500/30 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-red-900/20"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50">
+                            <CreditCard className="w-8 h-8 text-red-400" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white mb-1">Total Deuda Acumulada</h2>
+                            <p className="text-white/60 text-sm">Comisión total generada por uso de la plataforma (Histórico)</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        {loading ? (
+                            <div className="h-12 w-48 bg-white/5 rounded animate-pulse" />
+                        ) : (
+                            <div className="flex flex-col items-end">
+                                <span className="text-4xl font-bold text-white tabular-nums">
+                                    {allTimeDebt.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-lg text-amber-500">Bs</span>
+                                </span>
+                                <span className="text-xs text-red-400 font-bold uppercase tracking-widest mt-1 bg-red-500/10 px-2 py-1 rounded">
+                                    Pendiente de Pago
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </motion.div>
+
+                {/* Monthly Stats Grid */}
+                <h3 className="text-white/40 text-xs font-bold uppercase tracking-wider mb-4 ml-1">Estadísticas del Mes ({format(currentMonth, 'MMMM', { locale: es })})</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     {/* Revenue Card */}
                     <motion.div
@@ -118,7 +171,7 @@ export const FinanceManager: React.FC = () => {
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <DollarSign className="w-12 h-12 text-green-500" />
                         </div>
-                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Ingresos Totales</p>
+                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Ingresos Mes</p>
                         {loading ? (
                             <div className="h-8 w-24 bg-white/5 rounded animate-pulse" />
                         ) : (
