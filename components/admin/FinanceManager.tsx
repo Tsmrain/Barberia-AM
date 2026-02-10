@@ -141,7 +141,7 @@ export const FinanceManager: React.FC = () => {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-white mb-1">Total Deuda Acumulada</h2>
-                            <p className="text-white/60 text-sm">El 3% de tus ingresos históricos ({allTimeRevenue.toLocaleString('es-BO')} Bs)</p>
+                            <p className="text-white/60 text-sm">Comisión total generada por uso de la plataforma</p>
                         </div>
                     </div>
                     <div className="text-right">
@@ -159,97 +159,6 @@ export const FinanceManager: React.FC = () => {
                         )}
                     </div>
                 </motion.div>
-
-                {/* Monthly Stats Grid */}
-                <h3 className="text-white/40 text-xs font-bold uppercase tracking-wider mb-4 ml-1">Estadísticas del Mes ({format(currentMonth, 'MMMM', { locale: es })})</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    {/* Revenue Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="p-6 rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-white/5 relative overflow-hidden group"
-                    >
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <DollarSign className="w-12 h-12 text-green-500" />
-                        </div>
-                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Ingresos Mes</p>
-                        {loading ? (
-                            <div className="h-8 w-24 bg-white/5 rounded animate-pulse" />
-                        ) : (
-                            <h3 className="text-3xl font-bold text-white tabular-nums">
-                                {stats.totalRevenue.toLocaleString('es-BO')} <span className="text-sm text-white/40 font-normal">Bs</span>
-                            </h3>
-                        )}
-                        <p className="text-xs text-white/30 mt-2">En {stats.count} citas confirmadas</p>
-                    </motion.div>
-
-                    {/* Commission Card (HIGHLIGHT) */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="p-6 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/50 relative overflow-hidden group shadow-[0_0_30px_rgba(245,158,11,0.1)]"
-                    >
-                        <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/20 rounded-full blur-2xl group-hover:bg-amber-500/30 transition-all" />
-
-                        <div className="flex items-center gap-2 mb-2">
-                            <p className="text-amber-500 text-xs font-bold uppercase tracking-wider">Comisión Web App (Soporte)</p>
-                            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 text-[10px] font-bold">3%</span>
-                        </div>
-
-                        {loading ? (
-                            <div className="h-8 w-24 bg-white/5 rounded animate-pulse" />
-                        ) : (
-                            <h3 className="text-3xl font-bold text-amber-400 tabular-nums">
-                                {stats.totalCommission.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm text-amber-500/60 font-normal">Bs</span>
-                            </h3>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                            <p className="text-xs text-amber-200/80 font-medium">Monto a pagar al Desarrollador</p>
-                        </div>
-                    </motion.div>
-
-                    {/* Ticket Average */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="p-6 rounded-2xl bg-[#1a1a1a] border border-white/5"
-                    >
-                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Ticket Promedio</p>
-                        {loading ? (
-                            <div className="h-8 w-24 bg-white/5 rounded animate-pulse" />
-                        ) : (
-                            <h3 className="text-3xl font-bold text-white tabular-nums">
-                                {stats.averageTicket.toLocaleString('es-BO', { maximumFractionDigits: 0 })} <span className="text-sm text-white/40 font-normal">Bs</span>
-                            </h3>
-                        )}
-                        <p className="text-xs text-white/30 mt-2">Por cita realizada</p>
-                    </motion.div>
-
-                    {/* Bookings Count */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                        className="p-6 rounded-2xl bg-[#1a1a1a] border border-white/5"
-                    >
-                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Citas del Mes</p>
-                        {loading ? (
-                            <div className="h-8 w-12 bg-white/5 rounded animate-pulse" />
-                        ) : (
-                            <h3 className="text-3xl font-bold text-white tabular-nums">
-                                {stats.count}
-                            </h3>
-                        )}
-                        <div className="flex items-center gap-1 text-xs text-green-400 mt-2">
-                            <TrendingUp className="w-3 h-3" />
-                            <span>Actividad normal</span>
-                        </div>
-                    </motion.div>
-                </div>
 
                 {/* Detailed List (Optional) */}
                 <div className="bg-[#121212] rounded-2xl border border-white/5 overflow-hidden">
