@@ -41,10 +41,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
         }
     };
 
-    // Refetch when date changes significantly? 
-    // Actually simpler: just re-fetch whenever currentDate changes.
+    // Refetch when date changes
     useEffect(() => {
         refreshData();
+
+        // Realtime Subscription
+        const channel = supabaseApi.subscribeToBookings((payload) => {
+            console.log('Realtime update:', payload);
+            refreshData();
+        });
+
+        return () => {
+            channel.unsubscribe();
+        };
     }, [currentDate]);
 
     return (

@@ -131,5 +131,16 @@ export const bookingService = {
             .delete()
             .eq('id', id);
         if (error) throw error;
+    },
+
+    subscribeToBookings: (callback: (payload: any) => void) => {
+        return supabase
+            .channel('bookings-realtime')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'reservas' },
+                callback
+            )
+            .subscribe();
     }
 };
