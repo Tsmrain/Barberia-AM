@@ -79,6 +79,13 @@ export const FinanceManager: React.FC = () => {
     }, [currentMonth]);
 
     const handleMarkAsPaid = async () => {
+        const password = prompt("Ingrese la Clave de Desarrollador para autorizar el pago:");
+
+        if (password !== 'PaymentBarber$') {
+            toast.error("Contraseña incorrecta. Acceso denegado.");
+            return;
+        }
+
         if (!confirm(`¿Confirmas que recibiste el pago de ${allTimeDebt.toLocaleString('es-BO')} Bs? Esto reiniciará la deuda a 0.`)) {
             return;
         }
