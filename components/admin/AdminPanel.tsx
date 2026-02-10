@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, CalendarDays, LogOut, Scissors, UserPlus, Store } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, LogOut, Scissors, UserPlus, Store, DollarSign } from 'lucide-react';
 import { startOfWeek, endOfWeek, subWeeks, addWeeks } from 'date-fns';
 
 import { BookingsManager } from './BookingsManager';
 import { BranchManager } from './BranchManager';
+import { FinanceManager } from './FinanceManager'; // Import
 import { QuickBookingModal } from './QuickBookingModal'; // Import
 import { Booking } from '../../types';
 import { supabaseApi } from '../../lib/supabaseApi';
@@ -16,7 +17,7 @@ interface AdminPanelProps {
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
-    const [activeTab, setActiveTab] = useState<'bookings' | 'branches'>('bookings');
+    const [activeTab, setActiveTab] = useState<'bookings' | 'branches' | 'finance'>('bookings');
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
     const [isQuickModalOpen, setIsQuickModalOpen] = useState(false);
@@ -87,6 +88,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                         <Store className="w-6 h-6" />
                         <span className="hidden lg:block font-medium">Sucursales</span>
                     </button>
+
+                    <button
+                        onClick={() => setActiveTab('finance')}
+                        className={`p-3 md:px-4 md:py-3 rounded-xl flex items-center space-x-3 transition-all ${activeTab === 'finance' ? 'bg-amber-500 text-black' : 'text-white/50 hover:bg-white/5 hover:text-white'
+                            }`}
+                    >
+                        <DollarSign className="w-6 h-6" />
+                        <span className="hidden lg:block font-medium">Finanzas</span>
+                    </button>
                 </div>
 
                 {/* Logout Bottom */}
@@ -112,7 +122,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                     <header className="flex justify-between items-center mb-8">
                         <div>
                             <h1 className="text-3xl font-bold text-white mb-1">
-                                {activeTab === 'bookings' ? 'Gestión de Reservas' : 'Control de Sucursales'}
+                                {activeTab === 'bookings' ? 'Gestión de Reservas' :
+                                    activeTab === 'branches' ? 'Control de Sucursales' : 'Reporte Financiero'}
                             </h1>
                             <p className="text-white/40 text-sm">Bienvenido de nuevo, Andy.</p>
                         </div>
@@ -150,6 +161,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                             />
                         )}
                         {activeTab === 'branches' && <BranchManager />}
+                        {activeTab === 'finance' && <FinanceManager />}
                     </motion.div>
                 </div>
             </main>
