@@ -139,8 +139,10 @@ export const Identity: React.FC = () => {
     setStep(6); // Go to Confirmation
   };
 
-  // Validation: 8 digits, starts with 6 or 7
-  const isValidLength = /^[67]\d{7}$/.test(phone);
+  // Validation: 8 digits, starts with 6 or 7, not repeated (e.g. 77777777)
+  const isRepeated = (str: string) => /^(\d)\1+$/.test(str);
+  const isValidFormat = /^[67]\d{7}$/.test(phone);
+  const isPhoneValid = isValidFormat && !isRepeated(phone);
 
   return (
     <div className="flex flex-col h-full pt-8 px-6 pb-6">
@@ -188,12 +190,16 @@ export const Identity: React.FC = () => {
                   />
                   <div className="absolute right-0 top-1/2 -translate-y-1/2">
                     {isChecking && <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />}
-                    {!isChecking && client && isValidLength && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+                    {!isChecking && client && isPhoneValid && <CheckCircle2 className="w-5 h-5 text-green-500" />}
                   </div>
                 </div>
               </div>
-              {!isValidLength && phone.length > 0 && (
-                <p className="text-red-500 text-xs mt-2">Debe ser un número válido (8 dígitos comenzando con 6 o 7)</p>
+              {!isPhoneValid && phone.length > 0 && (
+                <p className="text-red-500 text-xs mt-2">
+                  {isRepeated(phone)
+                    ? "Por favor usa un número real (no repetido)"
+                    : "Debe ser un número válido (8 dígitos comenzando con 6 o 7)"}
+                </p>
               )}
             </>
           )}
@@ -209,6 +215,9 @@ export const Identity: React.FC = () => {
                 className="bg-white/5 rounded-3xl p-6 border border-white/10 w-full max-w-sm mx-auto shadow-2xl backdrop-blur-sm"
               >
                 {isEditingProfile ? (
+                  // ... Editing logic remains the same (truncated in replacement for brevity if unchanged, but I must match exact target or replace block carefully. 
+                  // Let's replace the block up to the button disable condition to ensure all `isValidLength` are gone.)
+
                   <div className="space-y-6">
                     <div className="text-left">
                       <h3 className="text-sm font-bold text-amber-500 uppercase tracking-widest mb-4">Actualizar Datos</h3>
@@ -283,7 +292,7 @@ export const Identity: React.FC = () => {
             )}
 
             {/* CASE B: NEW USER */}
-            {!isChecking && isNewUser && isValidLength && (
+            {!isChecking && isNewUser && isPhoneValid && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -358,8 +367,8 @@ export const Identity: React.FC = () => {
       <div className="pt-4">
         <button
           onClick={handleContinue}
-          disabled={!isValidLength || (isNewUser && name.length < 2) || isChecking || isEditingProfile}
-          className={`w-full py-4 rounded-full font-bold text-lg transition-all duration-300 ${isValidLength && (!isNewUser || name.length >= 2) && !isEditingProfile
+          disabled={!isPhoneValid || (isNewUser && name.length < 2) || isChecking || isEditingProfile}
+          className={`w-full py-4 rounded-full font-bold text-lg transition-all duration-300 ${isPhoneValid && (!isNewUser || name.length >= 2) && !isEditingProfile
             ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)] transform hover:scale-[1.02]'
             : 'bg-white/10 text-white/20 cursor-not-allowed'
             }`}
