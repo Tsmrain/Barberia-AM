@@ -47,7 +47,7 @@ export const catalogService = {
 
     // --- BARBERS ---
     getBarbers: async (branchId?: string): Promise<Barber[]> => {
-        const cacheKey = `barbers_${branchId || 'all'}`;
+        const cacheKey = `barbers_v2_${branchId || 'all'}`; // Cache Buster v2
         const cached = cacheService.get<Barber[]>(cacheKey);
         if (cached) return cached;
 
