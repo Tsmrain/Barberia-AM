@@ -84,15 +84,21 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
         }
     }, [selectedBranchId]);
 
+    const COUNTRY_CODE = '+591';
+
     // Real-time Phone Check
     useEffect(() => {
-        const isValidLength = phone.length >= 8 && phone.length <= 12;
+        // Validation strict for Bolivia: starts with 6 or 7, 8 digits
+        const isValidFormat = /^[67]\d{7}$/.test(phone);
+        const isRepeated = /^(\d)\1+$/.test(phone); // Anti-spam (e.g. 77777777)
+        const isValid = isValidFormat && !isRepeated;
 
         const checkPhone = async () => {
-            if (isValidLength) {
+            if (isValid) {
                 setIsChecking(true);
                 try {
-                    const found = await supabaseApi.checkClientByPhone(phone);
+                    const fullPhone = `${COUNTRY_CODE}${phone}`;
+                    const found = await supabaseApi.checkClientByPhone(fullPhone);
                     setClient(found);
                 } finally {
                     setIsChecking(false);
@@ -110,6 +116,8 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
         setLoading(true);
 
         try {
+            const fullPhone = `${COUNTRY_CODE}${phone}`; // Standarize +591
+
             if (!customDate || !customTime) {
                 toast.error("Selecciona fecha y hora");
                 setLoading(false);
@@ -147,21 +155,15 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
             }
 
             // 3. AVAILABILITY GUARD (Validar doble reserva)
-            // Obtenemos los slots ocupados para ese barbero en ese día
             const takenSlots = await supabaseApi.getTakenSlots(selectedDateTime, selectedBarberId);
             if (takenSlots.includes(customTime)) {
                 toast.error("Horario no disponible", {
                     description: "Este barbero ya tiene una cita agendada a esta hora.",
-                    icon: <Ban className="w-5 h-5 text-red-500" />,
-                    style: {
-                        borderColor: 'rgba(239, 68, 68, 0.2)',
-                        background: 'rgba(20, 0, 0, 0.6)'
-                    }
+                    icon: <Ban className="w-5 h-5 text-red-500" />
                 });
                 setLoading(false);
                 return;
             }
-            // -----------------------------
 
             let currentClient = client;
             if (!currentClient) {
@@ -170,7 +172,8 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
                     setLoading(false);
                     return;
                 }
-                currentClient = await supabaseApi.createClient(phone, name);
+                // Create with FULL PHONE (+591 included) for consistency
+                currentClient = await supabaseApi.createClient(fullPhone, name);
             }
 
             await supabaseApi.createBooking({
@@ -178,7 +181,7 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
                 barberId: selectedBarberId,
                 serviceId: selectedServiceId,
                 branchId: selectedBranchId,
-                date: selectedDateTime, // Pasamos el objeto Date completo
+                date: selectedDateTime,
                 time: customTime,
                 status: BookingStatus.CONFIRMADO,
                 origin: 'walkin'
@@ -198,7 +201,7 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
 
     if (!isOpen) return null;
 
-    const isPhoneValid = phone.length >= 8;
+    const isPhoneValid = /^[67]\d{7}$/.test(phone) && !/^(\d)\1+$/.test(phone);
     const canSubmit = isPhoneValid && (client || name.length > 0) && !isChecking && selectedBarberId !== '' && customTime !== '' && customDate !== '';
 
     return (
@@ -225,14 +228,23 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
                     {/* 1. Phone Input */}
                     <div className="space-y-2">
                         <label className="text-xs text-white/40 uppercase tracking-wider font-bold">Celular Cliente</label>
-                        <div className="relative">
+                        <div className="relative flex items-center">
+                            {/* Prefix Visual */}
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 border-r border-white/10 pr-3 pointer-events-none">
+                                <span className="text-lg">🇧🇴</span>
+                                <span className="text-white/40 font-bold text-sm">{COUNTRY_CODE}</span>
+                            </div>
+
                             <input
                                 type="tel"
                                 value={phone}
-                                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} // Solo números
-                                placeholder="Ej: 70012345"
+                                onChange={(e) => {
+                                    // Limit to 8 digits, only numbers
+                                    setPhone(e.target.value.replace(/\D/g, '').slice(0, 8))
+                                }}
+                                placeholder="Ej: 77712345"
                                 autoFocus
-                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-4 pl-4 pr-12 text-xl font-bold text-white focus:border-amber-500 focus:outline-none placeholder-white/10"
+                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl py-4 pl-[6.5rem] pr-12 text-xl font-bold text-white focus:border-amber-500 focus:outline-none placeholder-white/10 tracking-widest"
                             />
                             <div className="absolute right-4 top-1/2 -translate-y-1/2">
                                 {isChecking ? <Loader2 className="w-5 h-5 animate-spin text-amber-500" /> : (
@@ -240,6 +252,9 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
                                 )}
                             </div>
                         </div>
+                        {phone.length > 0 && !isPhoneValid && (
+                            <p className="text-red-500 text-xs">Debe ser un celular válido (8 dígitos, empieza con 6 o 7)</p>
+                        )}
                     </div>
 
                     <AnimatePresence mode="wait">
