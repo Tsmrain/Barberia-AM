@@ -57,15 +57,47 @@ Supabase Free Tier tiene un límite de tamaño de base de datos de **500MB**.
 
 ---
 
-## 4. ¿Necesito el Plan Pro ($25)?
+## 4. Cálculo Real de Capacidad (Escenario Santa Cruz)
 
-**Quedese en Free Tier si:**
--   Tiene < 40,000 usuarios activos mensuales.
--   No necesita backups automáticos diarios (Point-in-Time Recovery).
+Basado en los límites actuales de Supabase Free Tier (2025):
+*   **Base de Datos:** 500 MB (aprox. 50 millones de caracteres de texto).
+*   **Ancho de Banda (Egress):** 2 GB / mes.
 
-**Pásese a Pro si:**
--   El negocio depende 100% de la app y 1 hora de caída cuesta más de $25.
--   Necesita backups automáticos para dormir tranquilo.
--   Supera los 2GB de transferencia de base de datos (muchos usuarios concurrentes en el Admin Panel).
+### A. Capacidad Mensual (Matemática Pura)
+Suponiendo que NO usas Supabase Storage para fotos (usas links externos como ImgBB, Cloudinary o tu propio hosting), el consumo es solo texto JSON.
 
-Con las optimizaciones actuales, su aplicación está diseñada para operar confortablemente en el Free Tier con miles de reservas mensuales.
+**Consumo por Reserva (Flujo Completo):**
+*   Cargar Barberos/Servicios: ~2KB (Cacheado, se descarga 1 vez).
+*   Ver Disponibilidad: ~0.5KB.
+*   Crear Reserva: ~0.5KB.
+*   **Total por Cliente:** ~3KB (si es cliente recurrente) a ~10KB (cliente nuevo navegando mucho).
+
+**Límite de Egress (2,000,000 KB / mes):**
+*   **Reservas Mensuales Posibles:** ~200,000 reservas.
+*   **Reservas Diarias:** ~6,600 reservas al día.
+
+**Conclusión:**
+Para una barbería con clientes en Santa Cruz, **es virtualmente imposible llenar el cupo de Egress solo con reservas de texto**. Podrías tener 5 sucursales llenas todo el día y seguirías en el 5% del plan gratuito.
+
+### B. El Verdadero Peligro: IMÁGENES
+Si subes fotos de cortes de pelo a **Supabase Storage** (Buckets), cada foto de 1MB descargada por 1000 clientes = 1GB de Egress (50% de tu plan).
+
+**Regla de Oro para Costo Cero:**
+1.  **Aloja las fotos fuera:** Usa servicios gratuitos especializados en imágenes como **Cloudinary Free Tier**, **ImgBB**, o simplemente sube las fotos a Twitter/Instagram y usa el link público.
+2.  **Guarda solo el Link:** En tu tabla `barberos`, la columna `foto_url` debe ser un link de texto (`https://cloudinary...`), NO un archivo en Supabase.
+3.  **Resultado:** Supabase solo entrega el texto del link (bytes). Cloudinary paga el ancho de banda de la imagen. **Costo Supabase = 0.**
+
+### C. ¿Cuándo pagar $25 Pro?
+Solo necesitarás pagar si:
+1.  Tu base de datos supera los 500MB (aprox. **500,000 a 1 millón de reservas históricas**). A un ritmo de 50 reservas/día, esto pasará en **27 años**.
+2.  Necesitas Backups automáticos punto-a-punto (PITR) por seguridad extrema del negocio.
+
+---
+
+## 5. Monitoreo de Salud
+
+Revisa estos 2 indicadores una vez al mes en tu Supabase Dashboard:
+1.  **Database Size:** Mantener bajo 500MB.
+2.  **Egress:** Mantener bajo 2GB.
+
+Con la arquitectura actual (Texto en Supabase + Imágenes Externas/Optimizadas), **tienes "Costo Cero" garantizado para el volumen de cualquier barbería física en Bolivia.**
