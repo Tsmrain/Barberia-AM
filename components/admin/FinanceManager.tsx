@@ -51,22 +51,16 @@ export const FinanceManager: React.FC = () => {
                     supabaseApi.getBookings(allTimeStart, allTimeEnd)
                 ]);
 
-                // Filter valid bookings
-                const validMonth = monthData.filter(b =>
-                    b.estado === BookingStatus.CONFIRMADO ||
-                    b.estado === BookingStatus.COMPLETADO
-                );
+                // Filter valid bookings for monthly list (optional, maybe keep this clean for the list?)
+                // User only specified the debt calculation logic.
+                const validMonth = monthData; // Showing all in list too for consistency
 
-                const validAllTime = allTimeData.filter(b =>
-                    b.estado === BookingStatus.CONFIRMADO ||
-                    b.estado === BookingStatus.COMPLETADO
-                );
+                // Calculate Total Accumulated Debt (3%) based on ALL bookings
+                // User Request: "no importa el estado de la reserva igual lo cuentas"
+                const totalRevenueAllTime = allTimeData.reduce((acc, curr) => acc + curr.servicio.precio, 0);
+                setAllTimeDebt(totalRevenueAllTime * 0.03);
 
                 setBookings(validMonth);
-
-                // Calculate Total Accumulated Debt (3%)
-                const totalRevenueAllTime = validAllTime.reduce((acc, curr) => acc + curr.servicio.precio, 0);
-                setAllTimeDebt(totalRevenueAllTime * 0.03);
 
             } catch (error) {
                 console.error("Error fetching financial data:", error);
