@@ -28,30 +28,59 @@ Por defecto, Vercel despliega en `Washington, D.C. (iad1)`. Esto obliga a tus da
 
 ---
 
-## 3. Limitaciones del Plan Gratuito (FinOps)
+## 3. Limitaciones del Plan Gratuito (FinOps) - ESTRATEGIA CERO COSTO
 
-### **Image Optimization (1,000 / mes)**
-Hemos configurado `next.config.mjs` para reducir drásticamente el consumo de este límite.
--   **Solución:** Se generan menos tamaños de imagen innecesarios.
--   **Monitoreo:** Revisa la pestaña "Usage" en Vercel. Si te acercas a 1,000, considera alojar las imágenes ya optimizadas (WebP) en Supabase Storage directamente y servirlas sin el componente `<Image>` optimizado, o usar un servicio externo como Cloudinary.
+He analizado la documentación oficial de Vercel (Functions & Middleware Pricing) y hemos blindado tu aplicación para que no genere costos:
 
-### **Serverless Function Execution (100 GB-hours)**
-Esto equivale a millones de invocaciones rápidas.
--   Tu aplicación usa **Client-Side Rendering (CSR)** con Supabase para casi todo.
--   **Ventaja:** Tu backend es Supabase, no Vercel. Vercel solo sirve el HTML/JS estático.
--   **Resultado:** Consumo de Vercel Functions cercano a **CERO**.
+### **A. Serverless Functions (El mayor riesgo de costo)**
+-   **Tu Ventaja:** Tu aplicación usa **Client-Side Rendering (CSR)**.
+-   **¿Qué significa?** Cuando un usuario carga la página, su navegador se conecta DIRECTAMENTE a Supabase para pedir los datos.
+-   **Resultado:** Vercel **NO EJECUTA NINGUNA FUNCIÓN** de backend para servir tus datos.
+-   **Costo:** $0.00 (Porque no usas CPU de Vercel para la lógica).
+-   **Acción:** Hemos eliminado la carpeta `app/api` por completo para evitar tentaciones.
+
+### **B. Edge Middleware (Se cobra por invocación)**
+-   **Tu Ventaja:** **NO TIENES** archivo `middleware.ts` en tu proyecto.
+-   **¿Qué significa?** Vercel sirve tus archivos (HTML, CSS, JS) directamente desde la CDN (red global de servidores) sin procesar nada.
+-   **Resultado:** 0 Invocaciones de Middleware.
+-   **Costo:** $0.00.
+
+### **C. Image Optimization (1,000 / mes)**
+-   **Tu Ventaja:** Hemos configurado `next.config.mjs` para limitar los tamaños generados.
+-   **Estrategia:** Solo se optimizan imágenes críticas (logos, UI). Las fotos de barberos se sirven, pero con tamaños controlados.
+-   **Monitoreo:** Si pasas las 1,000 imágenes optimizadas, Vercel pausará la optimización (no te cobrará extra automáticamente en Hobby, pero las imágenes se verán sin optimizar o darán error 402).
 
 ---
 
-## 4. Cache & CDN (Edge Network)
+## 4. Estrategia de Región y Latencia (Docs Analysis)
 
-Tu aplicación ya está configurada para aprovechar la red Edge de Vercel:
--   **Assets Estáticos (JS/CSS/Imágenes):** Se cachean automáticamente en todo el mundo.
--   **API Responses:** Como consultamos Supabase directamente desde el cliente (`useEffect`), evitamos que Vercel tenga que procesar y cobrarte por funciones API intermedias (API Routes), salvo casos muy específicos.
+Según la documentación de Vercel (`configuring-functions/region`):
+
+1.  **Vercel Functions (Server Side):**
+    -   Por defecto están en `iad1` (Washington, D.C.).
+    -   **En Plan Hobby:** NO PUEDES cambiar la región de las Serverless Functions a Sudamérica (`gru1`). Estás limitado a regiones específicas (generalmente US, EU).
+    -   **¡PERO NO IMPORTA!** Como usamos Client-Side Rendering, tu usuario (en Sudamérica) se conecta a Supabase (en Sao Paulo) directamente. La "Function Region" de Vercel solo afectaría si tuviéramos API Routes, que **ya borramos**.
+
+2.  **Vercel Edge Network (CDN):**
+    -   Es global y automática.
+    -   Un usuario en Santiago/Bolivia descargará tu Web (HTML/JS) desde el nodo de borde más cercano (ej. Santiago, Sao Paulo o Lima), **independientemente** de la región de la función.
+    -   **Conclusión:** Tu latencia para cargar la app será mínima (<100ms) y tus datos cargarán rápido porque van directo a Sao Paulo.
 
 ---
 
-## 5. Build Command
+## 5. Resumen de Arquitectura "Zero Cost"
+
+| Componente Vercel | Uso en tu App | Costo Estimado | Razón |
+| :--- | :--- | :--- | :--- |
+| **Functions** | 0 GB-Hrs | **$0** | Todo es Client-Side + Supabase directo. |
+| **Middleware** | 0 Invocations | **$0** | No archivo middleware.ts implicado. |
+| **Bandwidth** | < 100 GB | **$0** | Plan Hobby incluye 100GB. CSR ahorra mucho ancho de banda. |
+| **Images** | < 1000 Source | **$0** | Configuración restrictiva en next.config.mjs. |
+
+
+---
+
+## 6. Build Command
 
 ```bash
 npm run build
