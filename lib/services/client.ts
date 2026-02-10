@@ -29,9 +29,14 @@ export const clientService = {
     },
 
     createClient: async (phone: string, name: string): Promise<Client> => {
+        // Validation: Only letters (including accents) and spaces
+        if (!/^[a-zA-Z\s\u00C0-\u00FF]+$/.test(name)) {
+            throw new Error("El nombre solo puede contener letras y espacios.");
+        }
+
         const newClient = {
             celular: phone,
-            nombre_completo: name,
+            nombre_completo: name.trim(), // Ensure clean spacing
             ranking: 'nuevo'
         };
 
@@ -77,6 +82,11 @@ export const clientService = {
     },
 
     updateClient: async (phone: string, updates: Partial<Client>): Promise<Client> => {
+        // Validation for Name updates
+        if (updates.nombre_completo && !/^[a-zA-Z\s\u00C0-\u00FF]+$/.test(updates.nombre_completo)) {
+            throw new Error("El nombre solo puede contener letras y espacios.");
+        }
+
         const { data, error } = await supabase
             .from('clientes')
             .update(updates)

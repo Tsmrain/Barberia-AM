@@ -272,10 +272,11 @@ export const QuickBookingModal: React.FC<QuickBookingModalProps> = ({ isOpen, on
                                             type="text"
                                             value={name}
                                             onChange={(e) => {
-                                                setName(e.target.value);
+                                                const val = e.target.value.replace(/[^a-zA-Z\s\u00C0-\u00FF]/g, '');
+                                                setName(val);
                                                 // Trigger search (debounced ideally, simplified here)
-                                                if (e.target.value.length > 2) {
-                                                    supabaseApi.searchClientsByName(e.target.value).then(matches => {
+                                                if (val.length > 2) {
+                                                    supabaseApi.searchClientsByName(val).then(matches => {
                                                         // Filter out if currently checking (though mock is fast)
                                                         setPossibleMatches(matches);
                                                     });

@@ -276,7 +276,7 @@ export const Identity: React.FC = () => {
                           <input
                             type="text"
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(e) => setName(e.target.value.replace(/[^a-zA-Z\s\u00C0-\u00FF]/g, ''))}
                             placeholder="Tu nombre"
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-all"
                             autoFocus
@@ -353,7 +353,7 @@ export const Identity: React.FC = () => {
                     type="text"
                     value={name}
                     onChange={(e) => {
-                      setName(e.target.value);
+                      setName(e.target.value.replace(/[^a-zA-Z\s\u00C0-\u00FF]/g, ''));
                     }}
                     placeholder="Tu Nombre Completo"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-center text-lg focus:outline-none focus:border-amber-500 transition-all"
