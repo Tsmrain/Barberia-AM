@@ -30,6 +30,7 @@ export const FinanceManager: React.FC = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [allTimeDebt, setAllTimeDebt] = useState(0);
+    const [allTimeRevenue, setAllTimeRevenue] = useState(0); // New State
     const [loading, setLoading] = useState(true);
 
     // Fetch data when month changes
@@ -66,6 +67,7 @@ export const FinanceManager: React.FC = () => {
 
                 // Calculate Total Accumulated Debt (3%)
                 const totalRevenueAllTime = validAllTime.reduce((acc, curr) => acc + curr.servicio.precio, 0);
+                setAllTimeRevenue(totalRevenueAllTime); // Set Revenue
                 setAllTimeDebt(totalRevenueAllTime * 0.03);
 
             } catch (error) {
@@ -139,7 +141,7 @@ export const FinanceManager: React.FC = () => {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-white mb-1">Total Deuda Acumulada</h2>
-                            <p className="text-white/60 text-sm">Comisión total generada por uso de la plataforma (Histórico)</p>
+                            <p className="text-white/60 text-sm">El 3% de tus ingresos históricos ({allTimeRevenue.toLocaleString('es-BO')} Bs)</p>
                         </div>
                     </div>
                     <div className="text-right">
