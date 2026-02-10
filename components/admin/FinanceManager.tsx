@@ -134,12 +134,12 @@ export const FinanceManager: React.FC = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="p-6 rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/30 relative overflow-hidden group"
+                        className="p-6 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/50 relative overflow-hidden group shadow-[0_0_30px_rgba(245,158,11,0.1)]"
                     >
                         <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/20 rounded-full blur-2xl group-hover:bg-amber-500/30 transition-all" />
 
                         <div className="flex items-center gap-2 mb-2">
-                            <p className="text-amber-500 text-xs font-bold uppercase tracking-wider">Comisión Plataforma</p>
+                            <p className="text-amber-500 text-xs font-bold uppercase tracking-wider">Comisión Web App (Soporte)</p>
                             <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 text-[10px] font-bold">3%</span>
                         </div>
 
@@ -150,7 +150,10 @@ export const FinanceManager: React.FC = () => {
                                 {stats.totalCommission.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm text-amber-500/60 font-normal">Bs</span>
                             </h3>
                         )}
-                        <p className="text-xs text-amber-500/40 mt-2">Monto a pagar por servicio</p>
+                        <div className="flex items-center gap-2 mt-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            <p className="text-xs text-amber-200/80 font-medium">Monto a pagar al Desarrollador</p>
+                        </div>
                     </motion.div>
 
                     {/* Ticket Average */}
