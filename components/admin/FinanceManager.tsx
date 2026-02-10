@@ -176,22 +176,19 @@ export const FinanceManager: React.FC = () => {
                         ) : (
                             <div className="flex flex-col items-end">
                                 <span className="text-4xl font-bold text-white tabular-nums">
-                                    {allTimeDebt.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-lg text-amber-500">Bs</span>
+                                    {allTimeDebt.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {/* SECRET TRIGGER: Click 'Bs' to open payment prompt */}
+                                    <span
+                                        onClick={handleMarkAsPaid}
+                                        className="text-lg text-amber-500 ml-1 cursor-default hover:text-amber-400 transition-colors select-none"
+                                        title="" // No tooltip
+                                    >
+                                        Bs
+                                    </span>
                                 </span>
                                 <span className="text-xs text-red-400 font-bold uppercase tracking-widest mt-1 bg-red-500/10 px-2 py-1 rounded">
                                     Pendiente de Pago
                                 </span>
-
-                                {allTimeDebt > 0 && (
-                                    <button
-                                        onClick={handleMarkAsPaid}
-                                        disabled={isProcessingPayment}
-                                        className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg shadow-lg shadow-green-900/20 transition-all flex items-center gap-2"
-                                    >
-                                        {isProcessingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                                        MARCAR COMO PAGADO
-                                    </button>
-                                )}
                             </div>
                         )}
                     </div>
