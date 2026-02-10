@@ -9,14 +9,14 @@ import { supabaseApi } from '../../lib/supabaseApi';
 import { Barber } from '../../types';
 
 export const BarberSelection: React.FC = () => {
-  const { setStep, setBarber, selectedService, selectedBranch } = useBooking();
+  const { setStep, setBarber, selectedServices, selectedBranch } = useBooking();
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // ... same effect
     const fetchBarbers = async () => {
       if (selectedBranch) {
-        // Filter barbers by the selected branch
         const data = await supabaseApi.getBarbers(selectedBranch.id);
         setBarbers(data);
       }
@@ -42,7 +42,7 @@ export const BarberSelection: React.FC = () => {
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-white mb-2">Elige a tu experto</h2>
         <p className="text-white/50">
-          Para tu <span className="text-amber-500">{selectedService?.nombre}</span> en {selectedBranch?.nombre}
+          Para {selectedServices.length > 1 ? 'tus servicios' : <span className="text-amber-500">{selectedServices[0]?.nombre}</span>} en {selectedBranch?.nombre}
         </p>
       </div>
 

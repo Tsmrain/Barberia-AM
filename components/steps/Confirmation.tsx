@@ -10,8 +10,16 @@ import { useBooking } from '../../store/BookingContext';
 import { supabaseApi } from '../../lib/supabaseApi';
 
 export const Confirmation: React.FC = () => {
-  const { setStep, selectedService, selectedBarber, selectedDate, selectedTime, selectedBranch, client } = useBooking();
+  const { setStep, selectedServices, selectedBarber, selectedDate, selectedTime, selectedBranch, client } = useBooking();
   const [isBooking, setIsBooking] = useState(false);
+
+  const calculateTotals = () => {
+    const totalDuration = selectedServices.reduce((acc, s) => acc + s.duracion_min, 0);
+    const totalPrice = selectedServices.reduce((acc, s) => acc + s.precio, 0);
+    return { totalDuration, totalPrice };
+  };
+
+  const { totalDuration, totalPrice } = calculateTotals();
 
   const handleBooking = async () => {
     setIsBooking(true);
@@ -22,19 +30,28 @@ export const Confirmation: React.FC = () => {
       if (!existing) {
         // If not found, create it now
         await supabaseApi.createClient(client!.celular, client!.nombre_completo);
-      } else if (client!.ranking === 'nuevo' && existing.ranking !== 'nuevo') {
-        // Optional: Update local context if DB has better info
       }
 
-      // 2. Create Booking
-      await supabaseApi.createBooking({
-        clientPhone: client!.celular,
-        serviceId: selectedService!.id,
-        barberId: selectedBarber!.id,
-        date: selectedDate!,
-        time: selectedTime!,
-        branchId: selectedBranch!.id
-      });
+      // 2. Create Bookings (Sequential)
+      let currentHour = parseInt(selectedTime!.split(':')[0]);
+
+      // We process bookings sequentially. If one fails, we might have partial state.
+      // ideally we'd use a transaction, but for now we loop.
+      for (const service of selectedServices) {
+        const timeString = `${currentHour.toString().padStart(2, '0')}:00`;
+
+        await supabaseApi.createBooking({
+          clientPhone: client!.celular,
+          serviceId: service.id,
+          barberId: selectedBarber!.id,
+          date: selectedDate!,
+          time: timeString,
+          branchId: selectedBranch!.id
+        });
+
+        // Increment hour for next service slot (assuming 1h slots system)
+        currentHour += 1;
+      }
 
       setStep(7); // Success
     } catch (error) {
@@ -44,7 +61,7 @@ export const Confirmation: React.FC = () => {
     }
   };
 
-  if (!selectedService || !selectedBarber || !selectedDate || !client || !selectedBranch) return null;
+  if (selectedServices.length === 0 || !selectedBarber || !selectedDate || !client || !selectedBranch) return null;
 
   return (
     <div className="flex flex-col h-full pt-8 px-6 pb-6">
@@ -70,13 +87,25 @@ export const Confirmation: React.FC = () => {
         <div className="h-4 bg-amber-500 w-full" />
 
         <div className="p-6 space-y-6">
-          <div className="flex justify-between items-start border-b border-black/10 pb-4">
-            <div>
-              <p className="text-xs text-black/50 uppercase tracking-wider mb-1">Servicio</p>
-              <h3 className="text-xl font-bold">{selectedService.nombre}</h3>
-              <p className="text-sm text-black/60">{selectedService.precio} Bs • {selectedService.duracion_min} min</p>
+          <div className="border-b border-black/10 pb-4">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-xs text-black/50 uppercase tracking-wider">Servicios ({selectedServices.length})</p>
+              <Scissors className="w-5 h-5 text-amber-600" />
             </div>
-            <Scissors className="w-6 h-6 text-amber-600" />
+
+            <div className="space-y-2">
+              {selectedServices.map(service => (
+                <div key={service.id} className="flex justify-between items-start">
+                  <span className="font-bold text-sm leading-tight max-w-[70%]">{service.nombre}</span>
+                  <span className="text-sm font-medium">{service.precio} Bs</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center mt-3 pt-3 border-t border-dashed border-black/10">
+              <span className="font-bold text-base">Total</span>
+              <span className="font-bold text-lg text-amber-600">{totalPrice} Bs <span className="text-xs text-black/60 font-normal">• ~{totalDuration} min</span></span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -110,7 +139,7 @@ export const Confirmation: React.FC = () => {
               </div>
             </div>
             <div>
-              <p className="text-xs text-black/50 uppercase tracking-wider mb-1">Hora</p>
+              <p className="text-xs text-black/50 uppercase tracking-wider mb-1">Hora Inicio</p>
               <div className="flex items-center space-x-1">
                 <Clock className="w-4 h-4 text-black/60" />
                 <span className="font-semibold">{selectedTime}</span>

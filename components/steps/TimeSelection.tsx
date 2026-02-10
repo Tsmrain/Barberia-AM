@@ -10,7 +10,7 @@ import { useBooking } from '../../store/BookingContext';
 import { supabaseApi } from '../../lib/supabaseApi';
 
 export const TimeSelection: React.FC = () => {
-  const { setStep, setDate, setTime, selectedBarber } = useBooking();
+  const { setStep, setDate, setTime, selectedBarber, selectedServices } = useBooking();
   const [selectedDay, setSelectedDay] = useState<Date>(startOfToday());
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
   const [takenSlots, setTakenSlots] = useState<string[]>([]);
@@ -41,7 +41,6 @@ export const TimeSelection: React.FC = () => {
 
       // Use cache if less than 60 seconds old to respect real-time-ish nature but save excessive clicks
       if (cached && (Date.now() - cached.timestamp < 60000)) {
-        console.log("Using cached slots"); // Debug
         setTakenSlots(cached.slots);
         return;
       }
@@ -79,51 +78,16 @@ export const TimeSelection: React.FC = () => {
     }
   };
 
-  const handleSlotClick = (time: string) => {
-    if (loadingSlots) return;
-
-    // Check if slot is taken logic
-    const isTaken = takenSlots.includes(time);
-    const { isPast } = checkSlotAvailability(time);
-
-    if (isPast) {
-      toast.error('Este horario ya ha pasado', {
-        icon: <Ban className="w-5 h-5 text-red-400" />,
-        style: { background: 'rgba(20, 0, 0, 0.6)' }
-      });
-      return;
-    }
-
-    if (isTaken) {
-      // Feedback elegante de error
-      toast.error('Este horario ya no está disponible', {
-        description: 'Por favor selecciona otro momento para tu corte.',
-        duration: 3000,
-        icon: <Ban className="w-5 h-5 text-red-400" />,
-        style: {
-          borderColor: 'rgba(239, 68, 68, 0.2)',
-          background: 'rgba(20, 0, 0, 0.6)'
-        }
-      });
-      return;
-    }
-
-    // Success selection
-    setSelectedTimeSlot(time);
-  };
-
   const checkSlotAvailability = (time: string) => {
-    const isTaken = takenSlots.includes(time);
     const today = startOfToday();
 
     // If selected day is in the past (stale state)
     if (selectedDay < today) {
-      return { isTaken, isPast: true };
+      return { isTaken: false, isPast: true };
     }
 
     // Check Past Time for Today
     const now = new Date();
-    // We use isSameDay to check if it's literally today, regardless of time
     const isToday = isSameDay(selectedDay, now);
     let isPast = false;
 
@@ -131,33 +95,76 @@ export const TimeSelection: React.FC = () => {
       const slotHour = parseInt(time.split(':')[0]);
       const currentHour = now.getHours();
 
-      // Strict past check: cannot book current hour or past hours
       if (slotHour <= currentHour) {
         isPast = true;
       }
     }
-    return { isTaken, isPast };
+    return { isPast };
+  };
+
+  // Helper to check if a sequence of slots is available
+  const checkSequentialAvailability = (startTime: string) => {
+    const serviceCount = selectedServices.length || 1;
+    let startHour = parseInt(startTime.split(':')[0]);
+
+    for (let i = 0; i < serviceCount; i++) {
+      const currentSlot = `${startHour.toString().padStart(2, '0')}:00`;
+
+      // 1. Is it a valid slot in our system?
+      const isValidSlot = [...morningSlots, ...afternoonSlots].includes(currentSlot);
+      if (!isValidSlot) return { isUnavailable: true, reason: 'exceeds_hours' };
+
+      // 2. Is it taken?
+      if (takenSlots.includes(currentSlot)) return { isUnavailable: true, reason: 'taken' };
+
+      // 3. Is it in the past?
+      const { isPast } = checkSlotAvailability(currentSlot);
+      if (isPast) return { isUnavailable: true, reason: 'past' };
+
+      startHour++;
+    }
+    return { isUnavailable: false };
+  };
+
+  const handleSlotClick = (time: string) => {
+    if (loadingSlots) return;
+
+    // Sequential Check
+    const { isUnavailable, reason } = checkSequentialAvailability(time);
+
+    if (isUnavailable) {
+      if (reason === 'past') {
+        toast.error('Horario no disponible (Pasado)');
+      } else if (reason === 'taken') {
+        toast.error('Uno de los horarios necesarios está ocupado');
+      } else if (reason === 'exceeds_hours') {
+        toast.error('La duración total excede el horario de atención');
+      }
+      return;
+    }
+
+    // Success selection
+    setSelectedTimeSlot(time);
   };
 
   const renderTimeSlot = (time: string) => {
-    const { isTaken, isPast } = checkSlotAvailability(time);
+    const { isUnavailable } = checkSequentialAvailability(time);
     const isSelected = selectedTimeSlot === time;
-    const isUnavailable = isTaken || isPast;
 
     return (
       <button
         key={time}
         onClick={() => handleSlotClick(time)}
         className={`
-                relative py-3 rounded-xl text-xs font-medium border transition-all duration-200
-                ${loadingSlots ? 'opacity-50 cursor-wait' : ''}
-                ${isUnavailable
+                  relative py-3 rounded-xl text-xs font-medium border transition-all duration-200
+                  ${loadingSlots ? 'opacity-50 cursor-wait' : ''}
+                  ${isUnavailable
             ? 'bg-white/5 border-white/5 text-white/20 decoration-white/20 line-through cursor-pointer'
             : isSelected
               ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-105'
               : 'bg-white/5 border-white/10 text-white/80 hover:border-amber-500/50 hover:text-amber-500'
           }
-            `}
+              `}
       >
         {time}
       </button>
@@ -179,6 +186,11 @@ export const TimeSelection: React.FC = () => {
           <span>Agenda con <span className="text-amber-500">{selectedBarber?.nombre}</span></span>
           {loadingSlots && <Loader2 className="w-3 h-3 animate-spin text-amber-500" />}
         </div>
+        {selectedServices.length > 1 && (
+          <p className="text-xs text-amber-500/80 mt-1 pl-1">
+            Se buscarán {selectedServices.length} horas consecutivas.
+          </p>
+        )}
       </div>
 
       {/* Date Scroller */}

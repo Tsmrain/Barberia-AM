@@ -2,30 +2,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Loader2, CheckCircle2 } from 'lucide-react';
 import { useBooking } from '../../store/BookingContext';
 import { supabaseApi } from '../../lib/supabaseApi';
 import { Client } from '../../types';
 
-// Lista de países soportados
-const COUNTRIES = [
-  { code: '+591', flag: '🇧🇴', name: 'Bolivia' },
-  { code: '+52', flag: '🇲🇽', name: 'México' },
-  { code: '+54', flag: '🇦🇷', name: 'Argentina' },
-  { code: '+1', flag: '🇺🇸', name: 'USA' },
-  { code: '+55', flag: '🇧🇷', name: 'Brasil' },
-  { code: '+56', flag: '🇨🇱', name: 'Chile' },
-  { code: '+51', flag: '🇵🇪', name: 'Perú' },
-  { code: '+57', flag: '🇨🇴', name: 'Colombia' },
-  { code: '+34', flag: '🇪🇸', name: 'España' },
-];
-
 export const Identity: React.FC = () => {
   const { setStep, setClient, setClientPhoneInput, clientPhoneInput, client } = useBooking();
 
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]); // Default Bolivia
-  const [showCountryList, setShowCountryList] = useState(false);
-  const [phone, setPhone] = useState(clientPhoneInput.replace(/^\+\d+\s?/, '')); // Remove prefix if exists
+  const COUNTRY_CODE = '+591'; // Bolivia Only
+  const [phone, setPhone] = useState(clientPhoneInput.replace(/^\+591\s?/, ''));
   const [name, setName] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
@@ -34,25 +20,12 @@ export const Identity: React.FC = () => {
   const [tempPhone, setTempPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const countryMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (countryMenuRef.current && !countryMenuRef.current.contains(event.target as Node)) {
-        setShowCountryList(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   // Debounce phone check
   useEffect(() => {
-    const fullPhone = `${selectedCountry.code}${phone}`;
+    const fullPhone = `${COUNTRY_CODE}${phone}`;
 
     // Validación más flexible (8 a 12 dígitos)
-    const isValidLength = phone.length >= 8 && phone.length <= 12;
+    const isValidLength = /^[67]\d{7}$/.test(phone);
 
     const checkPhone = async () => {
       if (isValidLength && !isEditingProfile) {
@@ -80,7 +53,7 @@ export const Identity: React.FC = () => {
 
     const timer = setTimeout(checkPhone, 500);
     return () => clearTimeout(timer);
-  }, [phone, selectedCountry, setClient, isEditingProfile]);
+  }, [phone, setClient, isEditingProfile]);
 
   // Debounce Name Search for New Users
   useEffect(() => {
@@ -92,7 +65,7 @@ export const Identity: React.FC = () => {
     const searchMatches = async () => {
       try {
         const matches = await supabaseApi.searchClientsByName(name);
-        const fullPhone = `${selectedCountry.code}${phone}`;
+        const fullPhone = `${COUNTRY_CODE}${phone}`;
         const others = matches.filter(m => m.celular !== fullPhone);
         setPossibleMatches(others);
       } catch (e) {
@@ -102,16 +75,17 @@ export const Identity: React.FC = () => {
 
     const timer = setTimeout(searchMatches, 600);
     return () => clearTimeout(timer);
-  }, [name, isNewUser, phone, selectedCountry]);
+  }, [name, isNewUser, phone]);
 
   const handleUpdateProfile = async () => {
     if (!client) return;
 
-    const fullNewPhone = `${selectedCountry.code}${tempPhone}`;
+    const fullNewPhone = `${COUNTRY_CODE}${tempPhone}`;
     const oldPhone = client.celular;
 
-    if (tempPhone.length < 8) {
-      setError('Número de teléfono inválido');
+    // Validación estricta para Bolivia
+    if (!/^[67]\d{7}$/.test(tempPhone)) {
+      setError('Número de teléfono inválido (debe ser 8 dígitos comenzando con 6 o 7)');
       return;
     }
 
@@ -147,7 +121,7 @@ export const Identity: React.FC = () => {
   };
 
   const handleContinue = async () => {
-    const fullPhone = `${selectedCountry.code}${phone}`;
+    const fullPhone = `${COUNTRY_CODE}${phone}`;
     setClientPhoneInput(fullPhone);
 
     if (isNewUser) {
@@ -165,7 +139,8 @@ export const Identity: React.FC = () => {
     setStep(6); // Go to Confirmation
   };
 
-  const isValidLength = phone.length >= 8 && phone.length <= 12;
+  // Validation: 8 digits, starts with 6 or 7
+  const isValidLength = /^[67]\d{7}$/.test(phone);
 
   return (
     <div className="flex flex-col h-full pt-8 px-6 pb-6">
@@ -191,59 +166,24 @@ export const Identity: React.FC = () => {
               {/* Phone Input Container */}
               <div className="relative max-w-sm mx-auto flex items-end gap-3 justify-center">
 
-                {/* Country Selector */}
-                <div className="relative" ref={countryMenuRef}>
-                  <button
-                    onClick={() => setShowCountryList(!showCountryList)}
-                    className="flex items-center space-x-2 border-b-2 border-white/20 pb-2 mb-[1px] hover:border-white/40 transition-colors"
-                  >
-                    <span className="text-3xl">{selectedCountry.flag}</span>
-                    <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${showCountryList ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {/* Dropdown */}
-                  <AnimatePresence>
-                    {showCountryList && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute top-full left-0 mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto no-scrollbar"
-                      >
-                        {COUNTRIES.map((c) => (
-                          <button
-                            key={c.code}
-                            onClick={() => {
-                              setSelectedCountry(c);
-                              setShowCountryList(false);
-                            }}
-                            className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
-                          >
-                            <span className="text-xl">{c.flag}</span>
-                            <span className="text-white/80 text-sm font-medium">{c.name}</span>
-                            <span className="text-white/40 text-xs ml-auto">{c.code}</span>
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                {/* Static Country Code */}
+                <div className="flex items-center border-b-2 border-white/20 pb-2 mb-[1px]">
+                  <span className="text-3xl mr-2">🇧🇴</span>
+                  <span className="text-xl font-bold text-white/50">{COUNTRY_CODE}</span>
                 </div>
 
                 {/* Number Input */}
                 <div className="relative flex-1">
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 text-white/30 text-xl font-medium pointer-events-none -mt-1">
-                    {selectedCountry.code}
-                  </span>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => {
-                      // Only numbers, max 12
-                      const val = e.target.value.replace(/\D/g, '').slice(0, 12);
+                      // Only numbers, max 8
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 8);
                       setPhone(val);
                     }}
-                    placeholder="7000 0000"
-                    className="w-full bg-transparent border-b-2 border-white/20 text-3xl font-bold text-white placeholder-white/10 focus:outline-none focus:border-amber-500 transition-colors py-2 pl-16 text-left"
+                    placeholder="70000000"
+                    className="w-full bg-transparent border-b-2 border-white/20 text-3xl font-bold text-white placeholder-white/10 focus:outline-none focus:border-amber-500 transition-colors py-2 text-left tracking-widest"
                     autoFocus
                   />
                   <div className="absolute right-0 top-1/2 -translate-y-1/2">
@@ -252,6 +192,9 @@ export const Identity: React.FC = () => {
                   </div>
                 </div>
               </div>
+              {!isValidLength && phone.length > 0 && (
+                <p className="text-red-500 text-xs mt-2">Debe ser un número válido (8 dígitos comenzando con 6 o 7)</p>
+              )}
             </>
           )}
 
@@ -287,12 +230,12 @@ export const Identity: React.FC = () => {
                           <label className="text-[10px] uppercase tracking-wider text-white/30 ml-1">Número de Celular</label>
                           <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 font-medium">
-                              {selectedCountry.code}
+                              {COUNTRY_CODE}
                             </span>
                             <input
                               type="tel"
                               value={tempPhone}
-                              onChange={(e) => setTempPhone(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                              onChange={(e) => setTempPhone(e.target.value.replace(/\D/g, '').slice(0, 8))}
                               className="w-full bg-white/5 border border-white/10 rounded-xl pl-16 pr-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-all font-medium"
                             />
                           </div>
@@ -326,7 +269,7 @@ export const Identity: React.FC = () => {
                       <button
                         onClick={() => {
                           setName(client.nombre_completo);
-                          setTempPhone(client.celular.replace(selectedCountry.code, ''));
+                          setTempPhone(client.celular.replace(COUNTRY_CODE, ''));
                           setIsEditingProfile(true);
                         }}
                         className="text-xs text-amber-500/70 hover:text-amber-500 transition-colors underline underline-offset-4"
@@ -382,7 +325,7 @@ export const Identity: React.FC = () => {
                     <button
                       onClick={async () => {
                         const oldClient = possibleMatches[0];
-                        const newPhone = `${selectedCountry.code}${phone}`;
+                        const newPhone = `${COUNTRY_CODE}${phone}`;
 
                         // Update in backend
                         await supabaseApi.updateClientPhone(oldClient.celular, newPhone);

@@ -6,7 +6,7 @@ import { Barber, Service, Client, Branch } from '../types';
 interface BookingState {
   step: number;
   selectedBranch: Branch | null;
-  selectedService: Service | null;
+  selectedServices: Service[];
   selectedBarber: Barber | null;
   selectedDate: Date | null;
   selectedTime: string | null;
@@ -17,7 +17,7 @@ interface BookingState {
 interface BookingContextType extends BookingState {
   setStep: (step: number) => void;
   setBranch: (branch: Branch) => void;
-  setService: (service: Service) => void;
+  toggleService: (service: Service) => void;
   setBarber: (barber: Barber) => void;
   setDate: (date: Date) => void;
   setTime: (time: string) => void;
@@ -31,7 +31,7 @@ const BookingContext = createContext<BookingContextType | undefined>(undefined);
 export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [step, setStep] = useState(0);
   const [selectedBranch, setBranchState] = useState<Branch | null>(null);
-  const [selectedService, setServiceState] = useState<Service | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedBarber, setBarberState] = useState<Barber | null>(null);
   const [selectedDate, setDateState] = useState<Date | null>(null);
   const [selectedTime, setTimeState] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
   const resetBooking = () => {
     setStep(0);
     setBranchState(null);
-    setServiceState(null);
+    setSelectedServices([]);
     setBarberState(null);
     setDateState(null);
     setTimeState(null);
@@ -49,12 +49,22 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     setClientPhoneInputState('');
   };
 
+  const toggleService = (service: Service) => {
+    setSelectedServices(prev => {
+      const exists = prev.find(s => s.id === service.id);
+      if (exists) {
+        return prev.filter(s => s.id !== service.id);
+      }
+      return [...prev, service];
+    });
+  };
+
   return (
     <BookingContext.Provider
       value={{
         step,
         selectedBranch,
-        selectedService,
+        selectedServices,
         selectedBarber,
         selectedDate,
         selectedTime,
@@ -62,7 +72,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
         clientPhoneInput,
         setStep,
         setBranch: setBranchState,
-        setService: setServiceState,
+        toggleService,
         setBarber: setBarberState,
         setDate: (date: Date) => {
           const today = new Date();
