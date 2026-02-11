@@ -124,4 +124,6 @@ VALUES
     ('Plan Premium', 110.00, 60, 'Asesoramiento + Corte + Lavado (antes y después) + Arreglo de barba completa.'),
     ('Plan VIP', 130.00, 60, 'Asesoramiento + Corte + Lavado (antes y después) + Arreglo de barba completa + Perfilado de Cejas.');
 
+alter table reservas add column comision_pagada boolean default false;
+
 

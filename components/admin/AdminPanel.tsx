@@ -22,6 +22,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     const [loading, setLoading] = useState(true);
     const [isQuickModalOpen, setIsQuickModalOpen] = useState(false);
 
+    const STORAGE_KEY = 'admin_session_v1';
+    const TIMEOUT_MS = 60 * 60 * 1000; // 1 Hour
+
+    // 1. Load Session on Mount
+    useEffect(() => {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                const age = Date.now() - parsed.timestamp;
+                if (age < TIMEOUT_MS && parsed.activeTab) {
+                    setActiveTab(parsed.activeTab);
+                } else {
+                    localStorage.removeItem(STORAGE_KEY);
+                }
+            } catch (e) {
+                console.error("Failed to restore admin session", e);
+            }
+        }
+    }, []);
+
+    // 2. Save Session on Change
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            activeTab,
+            timestamp: Date.now()
+        }));
+    }, [activeTab]);
+
     // Lifted State for BookingsManager
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
