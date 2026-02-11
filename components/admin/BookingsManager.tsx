@@ -24,7 +24,8 @@ import {
     Filter,
     GripHorizontal,
     Ban,
-    MapPin
+    MapPin,
+    Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Booking, BookingStatus, Barber, Service, Branch } from '../../types';
@@ -72,12 +73,15 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
         });
     }, []);
 
+
+
     // Navigation Logic
-    const handlePrevWeek = () => onDateChange(subWeeks(currentDate, 1));
-    const handleNextWeek = () => onDateChange(addWeeks(currentDate, 1));
+    // Navigation Logic - ALWAYS WEEKLY
+    const handlePrev = () => onDateChange(subWeeks(currentDate, 1));
+    const handleNext = () => onDateChange(addWeeks(currentDate, 1));
     const handleToday = () => onDateChange(new Date());
 
-    // Generate Week Days (Monday to Friday)
+    // Generate Week Days (Always Monday to Sunday)
     const weekDays = useMemo(() => {
         const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // 1 = Monday
         return Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -195,31 +199,37 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
         );
     };
 
-    if (loading) return <div className="text-white/50 p-8">Cargando agenda semanal...</div>;
+    if (loading) return <div className="text-white/50 p-8 flex items-center gap-3"><Loader2 className="animate-spin" /> Cargando agenda...</div>;
 
     return (
         <div className="flex flex-col h-full bg-[#0a0a0a] rounded-3xl border border-white/5 overflow-hidden">
 
             {/* Header Controls */}
-            <div className="flex flex-col xl:flex-row items-center justify-between p-6 border-b border-white/5 bg-[#121212] gap-4">
+            <div className="flex flex-col xl:flex-row items-center justify-between p-4 md:p-6 border-b border-white/5 bg-[#121212] gap-4">
 
                 {/* Date Nav */}
-                <div className="flex items-center space-x-4 w-full xl:w-auto justify-center xl:justify-start">
+                <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto justify-center xl:justify-start">
                     <div className="flex items-center bg-black/40 rounded-xl p-1 border border-white/5">
-                        <button onClick={handlePrevWeek} className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors">
+                        <button onClick={handlePrev} className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors">
                             <ChevronLeft className="w-5 h-5" />
                         </button>
                         <button onClick={handleToday} className="px-4 text-sm font-bold text-white/80 hover:text-white transition-colors">
                             Hoy
                         </button>
-                        <button onClick={handleNextWeek} className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors">
+                        <button onClick={handleNext} className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors">
                             <ChevronRight className="w-5 h-5" />
                         </button>
                     </div>
-                    <h2 className="text-xl font-bold text-white capitalize flex items-center gap-2">
-                        <CalendarIcon className="w-5 h-5 text-amber-500" />
-                        {format(weekDays[0], 'MMM d', { locale: es })} - {format(weekDays[6], 'MMM d', { locale: es })}
-                    </h2>
+
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-lg md:text-xl font-bold text-white capitalize flex items-center gap-2">
+                            <CalendarIcon className="w-5 h-5 text-amber-500" />
+                            {/* Always show Week Range since Mobile is now Weekly List */}
+                            {format(weekDays[0], 'MMM d', { locale: es })} - {format(weekDays[6], 'MMM d', { locale: es })}
+                        </h2>
+
+
+                    </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto justify-center xl:justify-end">
@@ -277,86 +287,89 @@ export const BookingsManager: React.FC<BookingsManagerProps> = ({ bookings, load
             </div>
 
             {/* Weekly Grid */}
-            <div className="flex-1 overflow-auto no-scrollbar relative flex flex-col">
+            {/* Unified Weekly Grid View (Mobile & Desktop) */}
+            <div className="flex-1 overflow-auto no-scrollbar relative flex flex-col bg-[#121212]">
 
-                {/* Days Header */}
-                <div className="sticky top-0 z-20 flex border-b border-white/5 bg-[#0a0a0a]">
-                    <div className="w-16 shrink-0 border-r border-white/5 bg-[#121212]" /> {/* Time Col Spacer */}
-                    {weekDays.map(day => {
-                        const isToday = isSameDay(day, new Date());
-                        return (
-                            <div key={day.toISOString()} className={`flex-1 w-0 p-3 text-center border-r border-white/5 last:border-r-0 ${isToday ? 'bg-amber-500/5' : ''}`}>
-                                <p className="text-xs font-bold uppercase text-white/40 mb-1">{format(day, 'EEEE', { locale: es })}</p>
-                                <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${isToday ? 'bg-amber-500 text-black' : 'text-white'}`}>
-                                    {format(day, 'd')}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                {/* Horizontal Scroll Container for Mobile */}
+                <div className="min-w-[800px] flex flex-col h-full">
 
-                {/* Grid Body */}
-                <div className="flex-1 relative min-w-[800px]">
-                    {HOURS.map(hour => (
-                        <div key={hour} className="flex border-b border-white/5 h-32">
+                    {/* Days Header */}
+                    <div className="sticky top-0 z-40 flex border-b border-white/5 bg-[#0a0a0a]">
+                        {/* Sticky Time Corner */}
+                        <div className="w-16 shrink-0 border-r border-white/5 bg-[#121212] sticky left-0 z-50 shadow-[1px_0_10px_rgba(0,0,0,0.5)]" />
 
-                            {/* Time Label */}
-                            <div className="w-16 shrink-0 border-r border-white/5 flex items-start justify-center pt-2 bg-[#121212]">
-                                <span className="text-xs font-mono text-white/30">{hour}:00</span>
-                            </div>
-
-                            {/* Days Columns */}
-                            {weekDays.map(day => {
-                                const slotBookings = getBookingsForSlot(day, hour);
-                                const isToday = isSameDay(day, new Date());
-
-                                // Check if this specific slot is in the past for visual cue (optional, but good for UX)
-                                const slotDate = new Date(day);
-                                slotDate.setHours(hour, 59, 0, 0); // End of the hour slot
-                                const isPast = slotDate < new Date();
-
-                                return (
-                                    <div
-                                        key={`${day.toISOString()}-${hour}`}
-                                        onDragOver={handleDragOver}
-                                        onDrop={(e) => handleDrop(e, day, hour)}
-                                        className={`
-                                        flex-1 w-0 border-r border-white/5 last:border-r-0 p-1 relative transition-colors overflow-y-auto no-scrollbar
-                                        ${isToday ? 'bg-amber-500/[0.02]' : ''}
-                                        ${isPast ? 'bg-white/[0.01]' : 'hover:bg-white/[0.02]'}
-                                    `}
-                                    >
-                                        {/* Empty Slot Visual Hint */}
-                                        {slotBookings.length === 0 && !isPast && (
-                                            <div className="w-full h-full rounded-lg border-2 border-dashed border-transparent hover:border-white/5 transition-all" />
-                                        )}
-
-                                        {/* Visual indicator for past slots (optional subtle texture) */}
-                                        {isPast && slotBookings.length === 0 && (
-                                            <div className="w-full h-full opacity-30"
-                                                style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '10px 10px' }}
-                                            />
-                                        )}
-
-                                        {/* Render Bookings */}
-                                        <div className="flex flex-col gap-1 relative z-10">
-                                            {slotBookings.map(booking => (
-                                                <DraggableBookingCard
-                                                    key={booking.id}
-                                                    booking={booking}
-                                                    onDragStart={handleDragStart}
-                                                    onClick={() => {
-                                                        setSelectedBooking(booking);
-                                                        setIsEditModalOpen(true);
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
+                        {/* Day Columns Header */}
+                        {weekDays.map(day => {
+                            const isToday = isSameDay(day, new Date());
+                            return (
+                                <div key={day.toISOString()} className={`flex-1 w-0 p-3 text-center border-r border-white/5 last:border-r-0 ${isToday ? 'bg-amber-500/5' : ''}`}>
+                                    <p className="text-xs font-bold uppercase text-white/40 mb-1">{format(day, 'EEEE', { locale: es })}</p>
+                                    <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${isToday ? 'bg-amber-500 text-black' : 'text-white'}`}>
+                                        {format(day, 'd')}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    ))}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Grid Body */}
+                    <div className="flex-1 relative">
+                        {HOURS.map(hour => (
+                            <div key={hour} className="flex border-b border-white/5 h-32">
+
+                                {/* Sticky Time Label */}
+                                <div className="w-16 shrink-0 border-r border-white/5 flex items-start justify-center pt-2 bg-[#121212] sticky left-0 z-30 shadow-[1px_0_10px_rgba(0,0,0,0.5)]">
+                                    <span className="text-xs font-mono text-white/30">{hour}:00</span>
+                                </div>
+
+                                {/* Days Columns */}
+                                {weekDays.map(day => {
+                                    const slotBookings = getBookingsForSlot(day, hour);
+                                    const isToday = isSameDay(day, new Date());
+                                    const slotDate = new Date(day);
+                                    slotDate.setHours(hour, 59, 0, 0);
+                                    const isPast = slotDate < new Date();
+
+                                    return (
+                                        <div
+                                            key={`${day.toISOString()}-${hour}`}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, day, hour)}
+                                            className={`
+                                                flex-1 w-0 border-r border-white/5 last:border-r-0 p-1 relative transition-colors overflow-y-auto no-scrollbar
+                                                ${isToday ? 'bg-amber-500/[0.02]' : ''}
+                                                ${isPast ? 'bg-white/[0.01]' : 'hover:bg-white/[0.02]'}
+                                            `}
+                                        >
+                                            {/* Empty Slot Visual Hint */}
+                                            {slotBookings.length === 0 && !isPast && (
+                                                <div className="w-full h-full rounded-lg border-2 border-dashed border-transparent hover:border-white/5 transition-all" />
+                                            )}
+                                            {/* Past Slot Visual Hint */}
+                                            {isPast && slotBookings.length === 0 && (
+                                                <div className="w-full h-full opacity-30" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
+                                            )}
+
+                                            {/* Bookings */}
+                                            <div className="flex flex-col gap-1 relative z-10">
+                                                {slotBookings.map(booking => (
+                                                    <DraggableBookingCard
+                                                        key={booking.id}
+                                                        booking={booking}
+                                                        onDragStart={handleDragStart}
+                                                        onClick={() => {
+                                                            setSelectedBooking(booking);
+                                                            setIsEditModalOpen(true);
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
