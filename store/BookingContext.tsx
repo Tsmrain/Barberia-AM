@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Barber, Service, Client, Branch } from '../types';
 
 interface BookingState {
@@ -38,7 +38,60 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [client, setClientState] = useState<Client | null>(null);
   const [clientPhoneInput, setClientPhoneInputState] = useState<string>('');
 
+  const STORAGE_KEY = 'booking_session_v1';
+  const TIMEOUT_MS = 60 * 60 * 1000; // 1 Hour
+
+  // 1. Load Session on Mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const age = Date.now() - parsed.timestamp;
+
+        if (age < TIMEOUT_MS) {
+          // Restore State
+          setStep(parsed.step || 0);
+          setBranchState(parsed.selectedBranch);
+          setSelectedServices(parsed.selectedServices || []);
+          setBarberState(parsed.selectedBarber);
+          // Restore Date object from string
+          if (parsed.selectedDate) {
+            setDateState(new Date(parsed.selectedDate));
+          }
+          setTimeState(parsed.selectedTime);
+          setClientState(parsed.client);
+          setClientPhoneInputState(parsed.clientPhoneInput || '');
+        } else {
+          // Verify timeout: Clear stale data
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch (e) {
+        console.error("Failed to restore session", e);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  // 2. Save Session on Change
+  useEffect(() => {
+    const sessionData = {
+      timestamp: Date.now(), // Refresh timer on activity
+      step,
+      selectedBranch,
+      selectedServices,
+      selectedBarber,
+      selectedDate,
+      selectedTime,
+      client,
+      clientPhoneInput
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData));
+  }, [step, selectedBranch, selectedServices, selectedBarber, selectedDate, selectedTime, client, clientPhoneInput]);
+
   const resetBooking = () => {
+    localStorage.removeItem(STORAGE_KEY); // Clear session
     setStep(0);
     setBranchState(null);
     setSelectedServices([]);
