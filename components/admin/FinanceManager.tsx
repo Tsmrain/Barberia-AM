@@ -154,12 +154,7 @@ export const FinanceManager: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold text-white flex items-center gap-2 transition-colors">
-                        <Download className="w-4 h-4" />
-                        <span>Exportar Reporte</span>
-                    </button>
-                </div>
+
             </div>
 
             {/* Main Content */}
