@@ -37,6 +37,7 @@ export const FinanceManager: React.FC = () => {
     // Payment Logic State
     const [unpaidBookings, setUnpaidBookings] = useState<Booking[]>([]);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [filter, setFilter] = useState<'all' | 'pending' | 'paid'>('all');
 
     const fetchFinancialData = async () => {
         setLoading(true);
@@ -121,6 +122,15 @@ export const FinanceManager: React.FC = () => {
         };
     }, [bookings]);
 
+    const filteredBookings = useMemo(() => {
+        return bookings.filter(b => {
+            if (filter === 'all') return true;
+            if (filter === 'pending') return !b.comision_pagada;
+            if (filter === 'paid') return b.comision_pagada;
+            return true;
+        });
+    }, [bookings, filter]);
+
     const handlePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
     const handleNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
 
@@ -196,8 +206,24 @@ export const FinanceManager: React.FC = () => {
 
                 {/* Detailed List (Optional) */}
                 <div className="bg-[#121212] rounded-2xl border border-white/5 overflow-hidden">
-                    <div className="p-4 border-b border-white/5 flex justify-between items-center">
-                        <h3 className="text-sm font-bold text-white">Detalle de Transacciones</h3>
+                    <div className="p-4 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <h3 className="text-sm font-bold text-white">Transacciones</h3>
+
+                        {/* Segmented Control Filter */}
+                        <div className="flex p-1 bg-black/40 rounded-xl border border-white/5">
+                            {(['all', 'pending', 'paid'] as const).map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setFilter(tab)}
+                                    className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${filter === tab
+                                        ? 'bg-white text-black shadow-lg'
+                                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                                        }`}
+                                >
+                                    {tab === 'all' ? 'Todos' : tab === 'pending' ? 'Pendientes' : 'Pagados'}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -207,6 +233,7 @@ export const FinanceManager: React.FC = () => {
                                     <th className="px-6 py-3 font-medium">Fecha</th>
                                     <th className="px-6 py-3 font-medium">Cliente</th>
                                     <th className="px-6 py-3 font-medium">Servicio</th>
+                                    <th className="px-6 py-3 font-medium text-center">Estado</th>
                                     <th className="px-6 py-3 font-medium text-right">Monto</th>
                                     <th className="px-6 py-3 font-medium text-right">Comisión (3%)</th>
                                 </tr>
@@ -214,20 +241,20 @@ export const FinanceManager: React.FC = () => {
                             <tbody className="divide-y divide-white/5">
                                 {loading && (
                                     <tr>
-                                        <td colSpan={5} className="p-8 text-center text-white/30">
+                                        <td colSpan={6} className="p-8 text-center text-white/30">
                                             <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                                             Cargando datos...
                                         </td>
                                     </tr>
                                 )}
-                                {!loading && bookings.length === 0 && (
+                                {!loading && filteredBookings.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="p-8 text-center text-white/30">
+                                        <td colSpan={6} className="p-8 text-center text-white/30">
                                             No hay movimientos en este periodo.
                                         </td>
                                     </tr>
                                 )}
-                                {!loading && bookings.map(booking => (
+                                {!loading && filteredBookings.map(booking => (
                                     <tr key={booking.id} className="hover:bg-white/5 transition-colors">
                                         <td className="px-6 py-4 text-white/70">
                                             {format(booking.fecha_hora, 'dd MMM, HH:mm', { locale: es })}
@@ -237,6 +264,19 @@ export const FinanceManager: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 text-white/70">
                                             {booking.servicio.nombre}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            {booking.comision_pagada ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400 border border-green-500/20 uppercase tracking-wide">
+                                                    <CheckCircle2 className="w-3 h-3" />
+                                                    Pagado
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-wide">
+                                                    <CreditCard className="w-3 h-3" />
+                                                    Pendiente
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-right font-medium text-white">
                                             {booking.servicio.precio} Bs
